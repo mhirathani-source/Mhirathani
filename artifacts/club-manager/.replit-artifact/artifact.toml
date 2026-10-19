@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "إدارة النادي الرياضي"
+description = "تطبيق عربي آمن لإدارة المشتركين والاشتراكات والمدفوعات والمصاريف والتقارير المالية لنادٍ رياضي واحد، مع واجهة RTL متجاوبة."
+version = "1.0.0"
+id = "artifacts/club-manager"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24124
+
+[services.development]
+run = "pnpm --filter @workspace/club-manager run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/club-manager", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/club-manager/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24124"
+BASE_PATH = "/"

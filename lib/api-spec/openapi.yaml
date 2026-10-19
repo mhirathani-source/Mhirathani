@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Club membership and finance management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: club
+    description: Club dashboard
+  - name: members
+    description: Member records
+  - name: plans
+    description: Membership plans
+  - name: subscriptions
+    description: Subscriptions and payment history
 paths:
   /healthz:
     get:
@@ -24,7 +32,255 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /club/session:
+    get:
+      operationId: getClubSession
+      tags: [club]
+      summary: Get current club user and access status
+      responses:
+        "200":
+          description: Current session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubSession"
+        "401":
+          description: Not signed in
+  /club/dashboard:
+    get:
+      operationId: getClubDashboard
+      tags: [club]
+      summary: Get operational and financial dashboard
+      responses:
+        "200":
+          description: Dashboard totals and upcoming renewals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDashboard"
+  /members:
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: Search and list members
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: Matching members
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Member" }
+    post:
+      operationId: createMember
+      tags: [members]
+      summary: Add a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberInput" }
+      responses:
+        "201":
+          description: Member created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+  /members/{id}:
+    get:
+      operationId: getMember
+      tags: [members]
+      summary: Get member profile, subscription history, and payments
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Member profile and history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberDetail" }
+        "404":
+          description: Member not found
+    patch:
+      operationId: updateMember
+      tags: [members]
+      summary: Update a member
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberUpdate" }
+      responses:
+        "200":
+          description: Member updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+  /plans:
+    get:
+      operationId: listPlans
+      tags: [plans]
+      summary: List membership plans
+      responses:
+        "200":
+          description: Membership plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plan" }
+    post:
+      operationId: createPlan
+      tags: [plans]
+      summary: Create a membership plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanInput" }
+      responses:
+        "201":
+          description: Plan created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+  /plans/{id}:
+    patch:
+      operationId: updatePlan
+      tags: [plans]
+      summary: Update a membership plan
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanUpdate" }
+      responses:
+        "200":
+          description: Plan updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [subscriptions]
+      summary: List subscriptions
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, paused, expired, cancelled, all]
+            default: all
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        "200":
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Subscription" }
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Start a subscription for a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubscriptionInput" }
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subscription" }
+  /subscriptions/{id}/action:
+    post:
+      operationId: actOnSubscription
+      tags: [subscriptions]
+      summary: Pause, resume, renew, or cancel a subscription
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubscriptionAction" }
+      responses:
+        "200":
+          description: Updated subscription
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subscription" }
+  /subscriptions/{id}/payments:
+    get:
+      operationId: listSubscriptionPayments
+      tags: [subscriptions]
+      summary: List payments and adjustments for a subscription
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Subscription payment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Payment" }
+    post:
+      operationId: createSubscriptionPayment
+      tags: [subscriptions]
+      summary: Record a partial or full payment
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentInput" }
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+  /payments/{id}/receipt:
+    get:
+      operationId: getPaymentReceipt
+      tags: [subscriptions]
+      summary: Get a printable receipt
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Receipt data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+        "404":
+          description: Payment not found
 components:
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, minimum: 1 }
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +289,152 @@ components:
           type: string
       required:
         - status
+    ClubSession:
+      type: object
+      required: [userId, email, role, setupRequired]
+      properties:
+        userId: { type: string }
+        email: { type: string }
+        role: { type: [string, "null"], enum: [admin, staff, null] }
+        setupRequired: { type: boolean }
+    ClubDashboard:
+      type: object
+      required: [activeMembers, endingSoon, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, recentMembers]
+      properties:
+        activeMembers: { type: integer }
+        endingSoon: { type: integer }
+        expiredSubscriptions: { type: integer }
+        collectedFils: { type: integer }
+        outstandingFils: { type: integer }
+        monthlyCollectedFils: { type: integer }
+        recentMembers:
+          type: array
+          items: { $ref: "#/components/schemas/Member" }
+    Member:
+      type: object
+      required: [id, name, phone, joinedAt, active]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: string }
+        email: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+        joinedAt: { type: string, format: date-time }
+        active: { type: boolean }
+    MemberInput:
+      type: object
+      required: [name, phone]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        phone: { type: string, minLength: 7, maxLength: 24 }
+        email: { type: [string, "null"], format: email }
+        notes: { type: [string, "null"], maxLength: 1000 }
+    MemberUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        phone: { type: string, minLength: 7, maxLength: 24 }
+        email: { type: [string, "null"], format: email }
+        notes: { type: [string, "null"], maxLength: 1000 }
+        active: { type: boolean }
+    MemberDetail:
+      type: object
+      required: [member, subscriptions, payments]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+        subscriptions:
+          type: array
+          items: { $ref: "#/components/schemas/Subscription" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+    Plan:
+      type: object
+      required: [id, name, durationDays, priceFils, active]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        durationDays: { type: integer }
+        priceFils: { type: integer }
+        active: { type: boolean }
+    PlanInput:
+      type: object
+      required: [name, durationDays, priceFils]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        durationDays: { type: integer, minimum: 1, maximum: 3650 }
+        priceFils: { type: integer, minimum: 0 }
+    PlanUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        durationDays: { type: integer, minimum: 1, maximum: 3650 }
+        priceFils: { type: integer, minimum: 0 }
+        active: { type: boolean }
+    Subscription:
+      type: object
+      required: [id, memberId, memberName, planId, planName, priceFils, paidFils, balanceFils, startDate, endDate, status, createdAt]
+      properties:
+        id: { type: integer }
+        memberId: { type: integer }
+        memberName: { type: string }
+        planId: { type: integer }
+        planName: { type: string }
+        priceFils: { type: integer }
+        paidFils: { type: integer }
+        balanceFils: { type: integer }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [active, paused, expired, cancelled] }
+        createdAt: { type: string, format: date-time }
+    SubscriptionInput:
+      type: object
+      required: [memberId, planId, startDate]
+      properties:
+        memberId: { type: integer, minimum: 1 }
+        planId: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date }
+        discountFils: { type: integer, minimum: 0, default: 0 }
+        initialPaymentFils: { type: integer, minimum: 0, default: 0 }
+        paymentMethod:
+          type: string
+          enum: [cash, card, bank_transfer, wallet]
+    SubscriptionAction:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [pause, resume, renew, cancel] }
+        startDate: { type: string, format: date }
+        planId: { type: integer, minimum: 1 }
+    Payment:
+      type: object
+      required: [id, subscriptionId, amountFils, method, kind, createdAt, receiptNumber]
+      properties:
+        id: { type: integer }
+        subscriptionId: { type: integer }
+        amountFils: { type: integer }
+        method: { type: string, enum: [cash, card, bank_transfer, wallet] }
+        kind: { type: string, enum: [payment, refund, discount] }
+        note: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        receiptNumber: { type: string }
+    PaymentInput:
+      type: object
+      required: [amountFils, method]
+      properties:
+        amountFils: { type: integer, minimum: 1 }
+        method: { type: string, enum: [cash, card, bank_transfer, wallet] }
+        note: { type: [string, "null"], maxLength: 500 }
+    Receipt:
+      type: object
+      required: [receiptNumber, memberName, memberPhone, planName, amountFils, method, createdAt, currency]
+      properties:
+        receiptNumber: { type: string }
+        memberName: { type: string }
+        memberPhone: { type: string }
+        planName: { type: string }
+        amountFils: { type: integer }
+        method: { type: string }
+        createdAt: { type: string, format: date-time }
+        currency: { type: string, enum: [JOD] }
 
