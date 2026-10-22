@@ -21,21 +21,34 @@ import type {
 
 import type {
   CashMovement,
+  CashMovementInput,
+  CashRegister,
   ClubDashboard,
   ClubSession,
   Employee,
   EmployeeInput,
+  EmployeeUpdate,
   FinanceCategory,
   FinanceCategoryInput,
+  FinanceCategoryUpdate,
+  FinancePeriodReport,
   FinanceReport,
   FinanceTransaction,
   FinanceTransactionInput,
+  FinanceTransactionUpdate,
+  GetFinancePeriodReportParams,
   GetFinanceReportParams,
   HealthStatus,
   ListCashMovementsParams,
   ListFinanceTransactionsParams,
+  ListFinanceTransactionsV2Params,
   ListMembersParams,
   ListSubscriptionsParams,
+  ManagedEmployee,
+  ManagedFinanceTransaction,
+  ManagedFinanceTransactionInput,
+  ManagedPayrollEntry,
+  ManagedPayrollInput,
   Member,
   MemberDetail,
   MemberInput,
@@ -49,6 +62,7 @@ import type {
   PlanInput,
   PlanUpdate,
   Receipt,
+  RegisterCashMovement,
   Subscription,
   SubscriptionAction,
   SubscriptionInput
@@ -2331,5 +2345,1277 @@ export const usePayPayroll = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getPayPayrollMutationOptions(options));
+    }
+
+export const getListFinanceCategoriesV2Url = () => {
+
+
+
+
+  return `/api/finance/categories`
+}
+
+/**
+ * @summary List finance categories
+ */
+export const listFinanceCategoriesV2 = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory[]> => {
+
+  return customFetch<FinanceCategory[]>(getListFinanceCategoriesV2Url(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinanceCategoriesV2QueryKey = () => {
+    return [
+    `/api/finance/categories`
+    ] as const;
+    }
+
+
+export const getListFinanceCategoriesV2QueryOptions = <TData = Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinanceCategoriesV2QueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinanceCategoriesV2>>> = ({ signal }) => listFinanceCategoriesV2({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinanceCategoriesV2QueryResult = NonNullable<Awaited<ReturnType<typeof listFinanceCategoriesV2>>>
+export type ListFinanceCategoriesV2QueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List finance categories
+ */
+
+export function useListFinanceCategoriesV2<TData = Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinanceCategoriesV2QueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFinanceCategoryV2Url = () => {
+
+
+
+
+  return `/api/finance/categories`
+}
+
+/**
+ * @summary Add a finance category
+ */
+export const createFinanceCategoryV2 = async (financeCategoryInput: FinanceCategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FinanceCategory>(getCreateFinanceCategoryV2Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeCategoryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinanceCategoryV2MutationKey = () => ['createFinanceCategoryV2'] as const;
+
+export const getCreateFinanceCategoryV2MutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceCategoryV2>>, TError,CreateFinanceCategoryV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinanceCategoryV2>>, TError,CreateFinanceCategoryV2MutationVariables, TContext> => {
+
+const mutationKey = getCreateFinanceCategoryV2MutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinanceCategoryV2>>, CreateFinanceCategoryV2MutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinanceCategoryV2(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinanceCategoryV2MutationResult = NonNullable<Awaited<ReturnType<typeof createFinanceCategoryV2>>>
+    export type CreateFinanceCategoryV2MutationBody = BodyType<FinanceCategoryInput>
+    export type CreateFinanceCategoryV2MutationError = ErrorType<unknown>
+    export type CreateFinanceCategoryV2MutationVariables = {data: BodyType<FinanceCategoryInput>}
+
+    /**
+ * @summary Add a finance category
+ */
+export const useCreateFinanceCategoryV2 = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceCategoryV2>>, TError,CreateFinanceCategoryV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinanceCategoryV2>>,
+        TError,
+        CreateFinanceCategoryV2MutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateFinanceCategoryV2MutationOptions(options));
+    }
+
+export const getUpdateFinanceCategoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/finance/categories/${id}`
+}
+
+/**
+ * @summary Rename or deactivate a finance category
+ */
+export const updateFinanceCategory = async (id: number,
+    financeCategoryUpdate: FinanceCategoryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FinanceCategory>(getUpdateFinanceCategoryUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeCategoryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinanceCategoryMutationKey = () => ['updateFinanceCategory'] as const;
+
+export const getUpdateFinanceCategoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceCategory>>, TError,UpdateFinanceCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinanceCategory>>, TError,UpdateFinanceCategoryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateFinanceCategoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinanceCategory>>, UpdateFinanceCategoryMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFinanceCategory(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinanceCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinanceCategory>>>
+    export type UpdateFinanceCategoryMutationBody = BodyType<FinanceCategoryUpdate>
+    export type UpdateFinanceCategoryMutationError = ErrorType<void>
+    export type UpdateFinanceCategoryMutationVariables = {id: number;data: BodyType<FinanceCategoryUpdate>}
+
+    /**
+ * @summary Rename or deactivate a finance category
+ */
+export const useUpdateFinanceCategory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceCategory>>, TError,UpdateFinanceCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinanceCategory>>,
+        TError,
+        UpdateFinanceCategoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateFinanceCategoryMutationOptions(options));
+    }
+
+export const getListFinanceTransactionsV2Url = (params?: ListFinanceTransactionsV2Params,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/transactions?${stringifiedParams}` : `/api/finance/transactions`
+}
+
+/**
+ * @summary List income and expense transactions
+ */
+export const listFinanceTransactionsV2 = async (params?: ListFinanceTransactionsV2Params, options?: Parameters<typeof customFetch>[1]): Promise<ManagedFinanceTransaction[]> => {
+
+  return customFetch<ManagedFinanceTransaction[]>(getListFinanceTransactionsV2Url(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinanceTransactionsV2QueryKey = (params?: ListFinanceTransactionsV2Params,) => {
+    return [
+    `/api/finance/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFinanceTransactionsV2QueryOptions = <TData = Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError = ErrorType<unknown>>(params?: ListFinanceTransactionsV2Params, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinanceTransactionsV2QueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinanceTransactionsV2>>> = ({ signal }) => listFinanceTransactionsV2(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinanceTransactionsV2QueryResult = NonNullable<Awaited<ReturnType<typeof listFinanceTransactionsV2>>>
+export type ListFinanceTransactionsV2QueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List income and expense transactions
+ */
+
+export function useListFinanceTransactionsV2<TData = Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError = ErrorType<unknown>>(
+ params?: ListFinanceTransactionsV2Params, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinanceTransactionsV2QueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFinanceTransactionV2Url = () => {
+
+
+
+
+  return `/api/finance/transactions`
+}
+
+/**
+ * @summary Record income or an expense
+ */
+export const createFinanceTransactionV2 = async (managedFinanceTransactionInput: ManagedFinanceTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedFinanceTransaction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedFinanceTransaction>(getCreateFinanceTransactionV2Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(managedFinanceTransactionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinanceTransactionV2MutationKey = () => ['createFinanceTransactionV2'] as const;
+
+export const getCreateFinanceTransactionV2MutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceTransactionV2>>, TError,CreateFinanceTransactionV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinanceTransactionV2>>, TError,CreateFinanceTransactionV2MutationVariables, TContext> => {
+
+const mutationKey = getCreateFinanceTransactionV2MutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinanceTransactionV2>>, CreateFinanceTransactionV2MutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinanceTransactionV2(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinanceTransactionV2MutationResult = NonNullable<Awaited<ReturnType<typeof createFinanceTransactionV2>>>
+    export type CreateFinanceTransactionV2MutationBody = BodyType<ManagedFinanceTransactionInput>
+    export type CreateFinanceTransactionV2MutationError = ErrorType<unknown>
+    export type CreateFinanceTransactionV2MutationVariables = {data: BodyType<ManagedFinanceTransactionInput>}
+
+    /**
+ * @summary Record income or an expense
+ */
+export const useCreateFinanceTransactionV2 = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceTransactionV2>>, TError,CreateFinanceTransactionV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinanceTransactionV2>>,
+        TError,
+        CreateFinanceTransactionV2MutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateFinanceTransactionV2MutationOptions(options));
+    }
+
+export const getUpdateFinanceTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/finance/transactions/${id}`
+}
+
+/**
+ * @summary Edit a finance transaction
+ */
+export const updateFinanceTransaction = async (id: number,
+    financeTransactionUpdate: FinanceTransactionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ManagedFinanceTransaction> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedFinanceTransaction>(getUpdateFinanceTransactionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeTransactionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinanceTransactionMutationKey = () => ['updateFinanceTransaction'] as const;
+
+export const getUpdateFinanceTransactionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceTransaction>>, TError,UpdateFinanceTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinanceTransaction>>, TError,UpdateFinanceTransactionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateFinanceTransactionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinanceTransaction>>, UpdateFinanceTransactionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFinanceTransaction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinanceTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinanceTransaction>>>
+    export type UpdateFinanceTransactionMutationBody = BodyType<FinanceTransactionUpdate>
+    export type UpdateFinanceTransactionMutationError = ErrorType<void>
+    export type UpdateFinanceTransactionMutationVariables = {id: number;data: BodyType<FinanceTransactionUpdate>}
+
+    /**
+ * @summary Edit a finance transaction
+ */
+export const useUpdateFinanceTransaction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceTransaction>>, TError,UpdateFinanceTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinanceTransaction>>,
+        TError,
+        UpdateFinanceTransactionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateFinanceTransactionMutationOptions(options));
+    }
+
+export const getListEmployeesV2Url = () => {
+
+
+
+
+  return `/api/finance/employees`
+}
+
+/**
+ * @summary List employees and payroll balances
+ */
+export const listEmployeesV2 = async ( options?: Parameters<typeof customFetch>[1]): Promise<ManagedEmployee[]> => {
+
+  return customFetch<ManagedEmployee[]>(getListEmployeesV2Url(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmployeesV2QueryKey = () => {
+    return [
+    `/api/finance/employees`
+    ] as const;
+    }
+
+
+export const getListEmployeesV2QueryOptions = <TData = Awaited<ReturnType<typeof listEmployeesV2>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmployeesV2QueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmployeesV2>>> = ({ signal }) => listEmployeesV2({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmployeesV2>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmployeesV2QueryResult = NonNullable<Awaited<ReturnType<typeof listEmployeesV2>>>
+export type ListEmployeesV2QueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List employees and payroll balances
+ */
+
+export function useListEmployeesV2<TData = Awaited<ReturnType<typeof listEmployeesV2>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmployeesV2QueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEmployeeV2Url = () => {
+
+
+
+
+  return `/api/finance/employees`
+}
+
+/**
+ * @summary Add an employee
+ */
+export const createEmployeeV2 = async (employeeInput: EmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedEmployee> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedEmployee>(getCreateEmployeeV2Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(employeeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateEmployeeV2MutationKey = () => ['createEmployeeV2'] as const;
+
+export const getCreateEmployeeV2MutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmployeeV2>>, TError,CreateEmployeeV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEmployeeV2>>, TError,CreateEmployeeV2MutationVariables, TContext> => {
+
+const mutationKey = getCreateEmployeeV2MutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEmployeeV2>>, CreateEmployeeV2MutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEmployeeV2(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEmployeeV2MutationResult = NonNullable<Awaited<ReturnType<typeof createEmployeeV2>>>
+    export type CreateEmployeeV2MutationBody = BodyType<EmployeeInput>
+    export type CreateEmployeeV2MutationError = ErrorType<unknown>
+    export type CreateEmployeeV2MutationVariables = {data: BodyType<EmployeeInput>}
+
+    /**
+ * @summary Add an employee
+ */
+export const useCreateEmployeeV2 = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmployeeV2>>, TError,CreateEmployeeV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEmployeeV2>>,
+        TError,
+        CreateEmployeeV2MutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateEmployeeV2MutationOptions(options));
+    }
+
+export const getUpdateEmployeeUrl = (id: number,) => {
+
+
+
+
+  return `/api/finance/employees/${id}`
+}
+
+/**
+ * @summary Edit employee information or deactivate
+ */
+export const updateEmployee = async (id: number,
+    employeeUpdate: EmployeeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ManagedEmployee> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedEmployee>(getUpdateEmployeeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(employeeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateEmployeeMutationKey = () => ['updateEmployee'] as const;
+
+export const getUpdateEmployeeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmployee>>, TError,UpdateEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmployee>>, TError,UpdateEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getUpdateEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmployee>>, UpdateEmployeeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEmployee(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmployee>>>
+    export type UpdateEmployeeMutationBody = BodyType<EmployeeUpdate>
+    export type UpdateEmployeeMutationError = ErrorType<void>
+    export type UpdateEmployeeMutationVariables = {id: number;data: BodyType<EmployeeUpdate>}
+
+    /**
+ * @summary Edit employee information or deactivate
+ */
+export const useUpdateEmployee = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmployee>>, TError,UpdateEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmployee>>,
+        TError,
+        UpdateEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateEmployeeMutationOptions(options));
+    }
+
+export const getListPayrollV2Url = () => {
+
+
+
+
+  return `/api/finance/payroll`
+}
+
+/**
+ * @summary List salary obligations
+ */
+export const listPayrollV2 = async ( options?: Parameters<typeof customFetch>[1]): Promise<ManagedPayrollEntry[]> => {
+
+  return customFetch<ManagedPayrollEntry[]>(getListPayrollV2Url(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPayrollV2QueryKey = () => {
+    return [
+    `/api/finance/payroll`
+    ] as const;
+    }
+
+
+export const getListPayrollV2QueryOptions = <TData = Awaited<ReturnType<typeof listPayrollV2>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayrollV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPayrollV2QueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPayrollV2>>> = ({ signal }) => listPayrollV2({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPayrollV2>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPayrollV2QueryResult = NonNullable<Awaited<ReturnType<typeof listPayrollV2>>>
+export type ListPayrollV2QueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List salary obligations
+ */
+
+export function useListPayrollV2<TData = Awaited<ReturnType<typeof listPayrollV2>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayrollV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPayrollV2QueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePayrollV2Url = () => {
+
+
+
+
+  return `/api/finance/payroll`
+}
+
+/**
+ * @summary Create a salary obligation for an employee and period
+ */
+export const createPayrollV2 = async (managedPayrollInput: ManagedPayrollInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedPayrollEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedPayrollEntry>(getCreatePayrollV2Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(managedPayrollInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePayrollV2MutationKey = () => ['createPayrollV2'] as const;
+
+export const getCreatePayrollV2MutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayrollV2>>, TError,CreatePayrollV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPayrollV2>>, TError,CreatePayrollV2MutationVariables, TContext> => {
+
+const mutationKey = getCreatePayrollV2MutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPayrollV2>>, CreatePayrollV2MutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPayrollV2(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePayrollV2MutationResult = NonNullable<Awaited<ReturnType<typeof createPayrollV2>>>
+    export type CreatePayrollV2MutationBody = BodyType<ManagedPayrollInput>
+    export type CreatePayrollV2MutationError = ErrorType<unknown>
+    export type CreatePayrollV2MutationVariables = {data: BodyType<ManagedPayrollInput>}
+
+    /**
+ * @summary Create a salary obligation for an employee and period
+ */
+export const useCreatePayrollV2 = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayrollV2>>, TError,CreatePayrollV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPayrollV2>>,
+        TError,
+        CreatePayrollV2MutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePayrollV2MutationOptions(options));
+    }
+
+export const getRecordPayrollPaymentUrl = (id: number,) => {
+
+
+
+
+  return `/api/finance/payroll/${id}/payments`
+}
+
+/**
+ * @summary Record a partial or full salary payment
+ */
+export const recordPayrollPayment = async (id: number,
+    payrollPaymentInput: PayrollPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedPayrollEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ManagedPayrollEntry>(getRecordPayrollPaymentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollPaymentInput)
+  }
+);}
+
+
+
+
+
+export const getRecordPayrollPaymentMutationKey = () => ['recordPayrollPayment'] as const;
+
+export const getRecordPayrollPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPayrollPayment>>, TError,RecordPayrollPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordPayrollPayment>>, TError,RecordPayrollPaymentMutationVariables, TContext> => {
+
+const mutationKey = getRecordPayrollPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordPayrollPayment>>, RecordPayrollPaymentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  recordPayrollPayment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordPayrollPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof recordPayrollPayment>>>
+    export type RecordPayrollPaymentMutationBody = BodyType<PayrollPaymentInput>
+    export type RecordPayrollPaymentMutationError = ErrorType<void>
+    export type RecordPayrollPaymentMutationVariables = {id: number;data: BodyType<PayrollPaymentInput>}
+
+    /**
+ * @summary Record a partial or full salary payment
+ */
+export const useRecordPayrollPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPayrollPayment>>, TError,RecordPayrollPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordPayrollPayment>>,
+        TError,
+        RecordPayrollPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordPayrollPaymentMutationOptions(options));
+    }
+
+export const getGetFinancePeriodReportUrl = (params: GetFinancePeriodReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/reports?${stringifiedParams}` : `/api/finance/reports`
+}
+
+/**
+ * @summary Get a balanced daily, monthly, or yearly financial report
+ */
+export const getFinancePeriodReport = async (params: GetFinancePeriodReportParams, options?: Parameters<typeof customFetch>[1]): Promise<FinancePeriodReport> => {
+
+  return customFetch<FinancePeriodReport>(getGetFinancePeriodReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancePeriodReportQueryKey = (params?: GetFinancePeriodReportParams,) => {
+    return [
+    `/api/finance/reports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFinancePeriodReportQueryOptions = <TData = Awaited<ReturnType<typeof getFinancePeriodReport>>, TError = ErrorType<unknown>>(params: GetFinancePeriodReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancePeriodReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancePeriodReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancePeriodReport>>> = ({ signal }) => getFinancePeriodReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancePeriodReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancePeriodReportQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancePeriodReport>>>
+export type GetFinancePeriodReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a balanced daily, monthly, or yearly financial report
+ */
+
+export function useGetFinancePeriodReport<TData = Awaited<ReturnType<typeof getFinancePeriodReport>>, TError = ErrorType<unknown>>(
+ params: GetFinancePeriodReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancePeriodReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancePeriodReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCashRegisterUrl = () => {
+
+
+
+
+  return `/api/finance/cash`
+}
+
+/**
+ * @summary Get cash balance and itemized cash movements
+ */
+export const getCashRegister = async ( options?: Parameters<typeof customFetch>[1]): Promise<CashRegister> => {
+
+  return customFetch<CashRegister>(getGetCashRegisterUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCashRegisterQueryKey = () => {
+    return [
+    `/api/finance/cash`
+    ] as const;
+    }
+
+
+export const getGetCashRegisterQueryOptions = <TData = Awaited<ReturnType<typeof getCashRegister>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCashRegisterQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCashRegister>>> = ({ signal }) => getCashRegister({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCashRegisterQueryResult = NonNullable<Awaited<ReturnType<typeof getCashRegister>>>
+export type GetCashRegisterQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get cash balance and itemized cash movements
+ */
+
+export function useGetCashRegister<TData = Awaited<ReturnType<typeof getCashRegister>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCashRegisterQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordCashMovementUrl = () => {
+
+
+
+
+  return `/api/finance/cash`
+}
+
+/**
+ * @summary Record a cash deposit or withdrawal adjustment
+ */
+export const recordCashMovement = async (cashMovementInput: CashMovementInput, options?: Parameters<typeof customFetch>[1]): Promise<RegisterCashMovement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RegisterCashMovement>(getRecordCashMovementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cashMovementInput)
+  }
+);}
+
+
+
+
+
+export const getRecordCashMovementMutationKey = () => ['recordCashMovement'] as const;
+
+export const getRecordCashMovementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordCashMovement>>, TError,RecordCashMovementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordCashMovement>>, TError,RecordCashMovementMutationVariables, TContext> => {
+
+const mutationKey = getRecordCashMovementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordCashMovement>>, RecordCashMovementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordCashMovement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordCashMovementMutationResult = NonNullable<Awaited<ReturnType<typeof recordCashMovement>>>
+    export type RecordCashMovementMutationBody = BodyType<CashMovementInput>
+    export type RecordCashMovementMutationError = ErrorType<unknown>
+    export type RecordCashMovementMutationVariables = {data: BodyType<CashMovementInput>}
+
+    /**
+ * @summary Record a cash deposit or withdrawal adjustment
+ */
+export const useRecordCashMovement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordCashMovement>>, TError,RecordCashMovementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordCashMovement>>,
+        TError,
+        RecordCashMovementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordCashMovementMutationOptions(options));
     }
 

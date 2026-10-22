@@ -15,9 +15,12 @@ export interface FinanceTransaction {
   categoryId?: number | null;
   /** @nullable */
   categoryName?: string | null;
+  /** @nullable */
+  memberId?: number | null;
   amountFils: number;
   method: FinanceTransactionMethod;
   description: string;
   transactionDate: Date;
+  createdBy?: string;
   createdAt: Date;
 }

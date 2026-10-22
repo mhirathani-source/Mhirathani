@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-client-react";
 import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Search, Users, Wallet, Printer, MessageCircle, Settings } from "lucide-react";
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
+import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -61,6 +62,7 @@ const navItems = [
   { href: "/subscriptions", title: "الاشتراكات", icon: BadgeCheck },
   { href: "/plans", title: "الباقات", icon: ClipboardList },
   { href: "/finance", title: "المالية والرواتب", icon: Wallet },
+  { href: "/reports", title: "التقارير", icon: ChartNoAxesCombined },
 ];
 
 function AppShell({ children }: { children: ReactNode }) {
@@ -204,7 +206,8 @@ function MainRouter() {
     <Route path="/members/:id"><Protected><MemberDetail/></Protected></Route>
     <Route path="/plans"><Protected><Plans/></Protected></Route>
     <Route path="/subscriptions"><Protected><Subscriptions/></Protected></Route>
-    <Route path="/finance"><Protected><FinancePage/></Protected></Route>
+    <Route path="/finance"><Protected><FinanceManagementPage/></Protected></Route>
+    <Route path="/reports"><Protected><ReportsPage/></Protected></Route>
     <Route path="/receipt/:id"><Protected><ReceiptPage/></Protected></Route>
     <Route><div className="panel"><Empty text="الصفحة غير موجودة."/><button className="button primary" onClick={()=>setLocation("/dashboard")}>العودة للوحة التحكم</button></div></Route>
   </Switch>;

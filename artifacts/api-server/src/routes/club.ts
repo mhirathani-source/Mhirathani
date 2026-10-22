@@ -254,9 +254,19 @@ router.post("/subscriptions", requireClubUser, async (req, res): Promise<void> =
     }).returning();
     if ((body.data.discountFils ?? 0) > 0) await addPayment(trx, subscription.id, body.data.discountFils!, "cash", req.clubUser!.clerkUserId, "خصم", "discount");
     if ((body.data.initialPaymentFils ?? 0) > 0) await addPayment(trx, subscription.id, body.data.initialPaymentFils!, body.data.paymentMethod ?? "cash", req.clubUser!.clerkUserId);
+    await trx.insert(auditLogTable).values({
+      actorId: req.clubUser!.clerkUserId,
+      action: "subscription.created",
+      entityType: "subscription",
+      entityId: subscription.id,
+      details: {
+        discountFils: body.data.discountFils ?? 0,
+        initialPaymentFils: body.data.initialPaymentFils ?? 0,
+        paymentMethod: body.data.paymentMethod ?? "cash",
+      },
+    });
     return subscription;
   });
-  await audit(req.clubUser!.clerkUserId, "subscription.created", "subscription", created.id);
   res.status(201).json(CreateSubscriptionResponse.parse(await subscriptionView(created)));
 });
 
@@ -310,15 +320,22 @@ router.post("/subscriptions/:id/payments", requireClubUser, async (req, res): Pr
   if (!params.success || !body.success) { res.status(400).json({ error: "بيانات الدفعة غير صحيحة" }); return; }
   const [subscription] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, params.data.id)).limit(1);
   if (!subscription) { res.status(404).json({ error: "الاشتراك غير موجود" }); return; }
-  const [payment] = await db.transaction(async (trx) => {
+  const payment = await db.transaction(async (trx) => {
     const prior = await trx.select().from(paymentsTable).where(and(eq(paymentsTable.subscriptionId, subscription.id), eq(paymentsTable.kind, "payment")));
     const refunded = await trx.select().from(paymentsTable).where(and(eq(paymentsTable.subscriptionId, subscription.id), eq(paymentsTable.kind, "refund")));
     const alreadyPaid = prior.reduce((sum, item) => sum + item.amountFils, 0) - refunded.reduce((sum, item) => sum + item.amountFils, 0);
     const due = subscription.priceFils - subscription.discountFils - alreadyPaid;
     if (body.data.amountFils > due) throw new Error("المبلغ المدفوع أكبر من الرصيد المتبقي");
-    return [await addPayment(trx, subscription.id, body.data.amountFils, body.data.method, req.clubUser!.clerkUserId, body.data.note ?? null)];
+    const created = await addPayment(trx, subscription.id, body.data.amountFils, body.data.method, req.clubUser!.clerkUserId, body.data.note ?? null);
+    await trx.insert(auditLogTable).values({
+      actorId: req.clubUser!.clerkUserId,
+      action: "payment.recorded",
+      entityType: "payment",
+      entityId: created.id,
+      details: { amountFils: created.amountFils, method: created.method, subscriptionId: subscription.id },
+    });
+    return created;
   });
-  await audit(req.clubUser!.clerkUserId, "payment.recorded", "payment", payment.id, { amountFils: payment.amountFils });
   res.status(201).json(CreateSubscriptionPaymentResponse.parse({ ...payment, createdAt: payment.createdAt.toISOString() }));
 });
 

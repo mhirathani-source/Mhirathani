@@ -328,10 +328,13 @@ export interface FinanceTransaction {
   categoryId?: number | null;
   /** @nullable */
   categoryName?: string | null;
+  /** @nullable */
+  memberId?: number | null;
   amountFils: number;
   method: FinanceTransactionMethod;
   description: string;
   transactionDate: string;
+  createdBy?: string;
   createdAt: string;
 }
 
@@ -477,6 +480,277 @@ export interface PayrollPaymentInput {
   method: PayrollPaymentInputMethod;
 }
 
+export interface FinanceCategoryUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name?: string;
+  active?: boolean;
+}
+
+export type ManagedFinanceTransactionKind = typeof ManagedFinanceTransactionKind[keyof typeof ManagedFinanceTransactionKind];
+
+
+export const ManagedFinanceTransactionKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type ManagedFinanceTransactionMethod = typeof ManagedFinanceTransactionMethod[keyof typeof ManagedFinanceTransactionMethod];
+
+
+export const ManagedFinanceTransactionMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface ManagedFinanceTransaction {
+  id: number;
+  kind: ManagedFinanceTransactionKind;
+  /** @nullable */
+  categoryId: number | null;
+  /** @nullable */
+  categoryName: string | null;
+  /** @nullable */
+  memberId: number | null;
+  /** @minimum 1 */
+  amountFils: number;
+  method: ManagedFinanceTransactionMethod;
+  description: string;
+  transactionDate: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export type ManagedFinanceTransactionInputKind = typeof ManagedFinanceTransactionInputKind[keyof typeof ManagedFinanceTransactionInputKind];
+
+
+export const ManagedFinanceTransactionInputKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type ManagedFinanceTransactionInputMethod = typeof ManagedFinanceTransactionInputMethod[keyof typeof ManagedFinanceTransactionInputMethod];
+
+
+export const ManagedFinanceTransactionInputMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface ManagedFinanceTransactionInput {
+  kind: ManagedFinanceTransactionInputKind;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  categoryId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  memberId?: number | null;
+  /** @minimum 1 */
+  amountFils: number;
+  method: ManagedFinanceTransactionInputMethod;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  description: string;
+  transactionDate: string;
+}
+
+export type FinanceTransactionUpdateKind = typeof FinanceTransactionUpdateKind[keyof typeof FinanceTransactionUpdateKind];
+
+
+export const FinanceTransactionUpdateKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type FinanceTransactionUpdateMethod = typeof FinanceTransactionUpdateMethod[keyof typeof FinanceTransactionUpdateMethod];
+
+
+export const FinanceTransactionUpdateMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface FinanceTransactionUpdate {
+  kind?: FinanceTransactionUpdateKind;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  categoryId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  memberId?: number | null;
+  /** @minimum 1 */
+  amountFils?: number;
+  method?: FinanceTransactionUpdateMethod;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  description?: string;
+  transactionDate?: string;
+}
+
+export interface ManagedEmployee {
+  id: number;
+  name: string;
+  /** @nullable */
+  phone: string | null;
+  position: string;
+  baseSalaryFils: number;
+  active: boolean;
+  /** @nullable */
+  hiredAt: string | null;
+  createdAt: string;
+  outstandingFils: number;
+}
+
+export interface EmployeeUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  /**
+     * @maxLength 24
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  position?: string;
+  /** @minimum 0 */
+  baseSalaryFils?: number;
+  active?: boolean;
+  /** @nullable */
+  hiredAt?: string | null;
+}
+
+export type ManagedPayrollEntryStatus = typeof ManagedPayrollEntryStatus[keyof typeof ManagedPayrollEntryStatus];
+
+
+export const ManagedPayrollEntryStatus = {
+  due: 'due',
+  partial: 'partial',
+  paid: 'paid',
+} as const;
+
+export interface ManagedPayrollEntry {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  period: string;
+  amountFils: number;
+  paidFils: number;
+  outstandingFils: number;
+  dueDate: string;
+  status: ManagedPayrollEntryStatus;
+  createdAt: string;
+}
+
+export interface ManagedPayrollInput {
+  /** @minimum 1 */
+  employeeId: number;
+  /** @pattern ^\d{4}-(0[1-9]|1[0-2])$ */
+  period: string;
+  /** @minimum 1 */
+  amountFils: number;
+  dueDate: string;
+}
+
+export interface FinanceCategoryTotal {
+  /** @nullable */
+  categoryId: number | null;
+  categoryName: string;
+  amountFils: number;
+}
+
+export type FinancePeriodReportPeriod = typeof FinancePeriodReportPeriod[keyof typeof FinancePeriodReportPeriod];
+
+
+export const FinancePeriodReportPeriod = {
+  day: 'day',
+  month: 'month',
+  year: 'year',
+} as const;
+
+export interface FinancePeriodReport {
+  period: FinancePeriodReportPeriod;
+  fromDate: string;
+  toDate: string;
+  incomeFils: number;
+  expenseFils: number;
+  netFils: number;
+  payrollOutstandingFils: number;
+  cashBalanceFils: number;
+  incomeByCategory: FinanceCategoryTotal[];
+  expenseByCategory: FinanceCategoryTotal[];
+  transactions: ManagedFinanceTransaction[];
+}
+
+export type CashMovementInputDirection = typeof CashMovementInputDirection[keyof typeof CashMovementInputDirection];
+
+
+export const CashMovementInputDirection = {
+  in: 'in',
+  out: 'out',
+} as const;
+
+export interface CashMovementInput {
+  direction: CashMovementInputDirection;
+  /** @minimum 1 */
+  amountFils: number;
+  /**
+     * @minLength 2
+     * @maxLength 500
+     */
+  description: string;
+}
+
+export type RegisterCashMovementDirection = typeof RegisterCashMovementDirection[keyof typeof RegisterCashMovementDirection];
+
+
+export const RegisterCashMovementDirection = {
+  in: 'in',
+  out: 'out',
+} as const;
+
+export interface RegisterCashMovement {
+  id: string;
+  direction: RegisterCashMovementDirection;
+  amountFils: number;
+  description: string;
+  /** @nullable */
+  referenceType: string | null;
+  /** @nullable */
+  referenceId: number | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CashRegister {
+  balanceFils: number;
+  movements: RegisterCashMovement[];
+}
+
 export type ListMembersParams = {
 search?: string;
 /**
@@ -516,4 +790,32 @@ export type ListCashMovementsParams = {
 from?: string;
 to?: string;
 };
+
+export type ListFinanceTransactionsV2Params = {
+startDate?: string;
+endDate?: string;
+kind?: ListFinanceTransactionsV2Kind;
+};
+
+export type ListFinanceTransactionsV2Kind = typeof ListFinanceTransactionsV2Kind[keyof typeof ListFinanceTransactionsV2Kind];
+
+
+export const ListFinanceTransactionsV2Kind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type GetFinancePeriodReportParams = {
+period: GetFinancePeriodReportPeriod;
+date: string;
+};
+
+export type GetFinancePeriodReportPeriod = typeof GetFinancePeriodReportPeriod[keyof typeof GetFinancePeriodReportPeriod];
+
+
+export const GetFinancePeriodReportPeriod = {
+  day: 'day',
+  month: 'month',
+  year: 'year',
+} as const;
 
