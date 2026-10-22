@@ -271,6 +271,212 @@ export interface Receipt {
   currency: ReceiptCurrency;
 }
 
+export type FinanceCategoryKind = typeof FinanceCategoryKind[keyof typeof FinanceCategoryKind];
+
+
+export const FinanceCategoryKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export interface FinanceCategory {
+  id: number;
+  name: string;
+  kind: FinanceCategoryKind;
+  active: boolean;
+}
+
+export type FinanceCategoryInputKind = typeof FinanceCategoryInputKind[keyof typeof FinanceCategoryInputKind];
+
+
+export const FinanceCategoryInputKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export interface FinanceCategoryInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  kind: FinanceCategoryInputKind;
+}
+
+export type FinanceTransactionKind = typeof FinanceTransactionKind[keyof typeof FinanceTransactionKind];
+
+
+export const FinanceTransactionKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type FinanceTransactionMethod = typeof FinanceTransactionMethod[keyof typeof FinanceTransactionMethod];
+
+
+export const FinanceTransactionMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface FinanceTransaction {
+  id: number;
+  kind: FinanceTransactionKind;
+  /** @nullable */
+  categoryId?: number | null;
+  /** @nullable */
+  categoryName?: string | null;
+  amountFils: number;
+  method: FinanceTransactionMethod;
+  description: string;
+  transactionDate: string;
+  createdAt: string;
+}
+
+export type FinanceTransactionInputKind = typeof FinanceTransactionInputKind[keyof typeof FinanceTransactionInputKind];
+
+
+export const FinanceTransactionInputKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type FinanceTransactionInputMethod = typeof FinanceTransactionInputMethod[keyof typeof FinanceTransactionInputMethod];
+
+
+export const FinanceTransactionInputMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface FinanceTransactionInput {
+  kind: FinanceTransactionInputKind;
+  /** @nullable */
+  categoryId?: number | null;
+  /** @minimum 1 */
+  amountFils: number;
+  method: FinanceTransactionInputMethod;
+  /**
+     * @minLength 2
+     * @maxLength 500
+     */
+  description: string;
+  transactionDate: string;
+}
+
+export interface FinanceReport {
+  from: string;
+  to: string;
+  incomeFils: number;
+  expensesFils: number;
+  netFils: number;
+  debtFils: number;
+  payrollDueFils: number;
+  cashBalanceFils: number;
+}
+
+export type CashMovementDirection = typeof CashMovementDirection[keyof typeof CashMovementDirection];
+
+
+export const CashMovementDirection = {
+  in: 'in',
+  out: 'out',
+} as const;
+
+export interface CashMovement {
+  id: number;
+  direction: CashMovementDirection;
+  amountFils: number;
+  description: string;
+  /** @nullable */
+  referenceType?: string | null;
+  createdAt: string;
+}
+
+export interface Employee {
+  id: number;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  position: string;
+  baseSalaryFils: number;
+  active: boolean;
+  /** @nullable */
+  hiredAt?: string | null;
+}
+
+export interface EmployeeInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @maxLength 24
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  position: string;
+  /** @minimum 0 */
+  baseSalaryFils: number;
+  /** @nullable */
+  hiredAt?: string | null;
+}
+
+export type PayrollEntryStatus = typeof PayrollEntryStatus[keyof typeof PayrollEntryStatus];
+
+
+export const PayrollEntryStatus = {
+  due: 'due',
+  partial: 'partial',
+  paid: 'paid',
+} as const;
+
+export interface PayrollEntry {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  period: string;
+  amountFils: number;
+  paidFils: number;
+  dueDate: string;
+  status: PayrollEntryStatus;
+}
+
+export interface PayrollInput {
+  /** @minimum 1 */
+  employeeId: number;
+  /** @pattern ^\d{4}-\d{2}$ */
+  period: string;
+  /** @minimum 0 */
+  amountFils: number;
+  dueDate: string;
+}
+
+export type PayrollPaymentInputMethod = typeof PayrollPaymentInputMethod[keyof typeof PayrollPaymentInputMethod];
+
+
+export const PayrollPaymentInputMethod = {
+  cash: 'cash',
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  wallet: 'wallet',
+} as const;
+
+export interface PayrollPaymentInput {
+  /** @minimum 1 */
+  amountFils: number;
+  method: PayrollPaymentInputMethod;
+}
+
 export type ListMembersParams = {
 search?: string;
 /**
@@ -295,4 +501,19 @@ export const ListSubscriptionsStatus = {
   cancelled: 'cancelled',
   all: 'all',
 } as const;
+
+export type ListFinanceTransactionsParams = {
+from?: string;
+to?: string;
+};
+
+export type GetFinanceReportParams = {
+from: string;
+to: string;
+};
+
+export type ListCashMovementsParams = {
+from?: string;
+to?: string;
+};
 

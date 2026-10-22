@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "payroll_employee_period_unique" ON "payroll_entries" USING btree ("employee_id","period");

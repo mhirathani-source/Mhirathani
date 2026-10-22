@@ -5,6 +5,13 @@ import {
   ActOnSubscriptionResponse,
   CreateMemberBody,
   CreateMemberResponse,
+  CreateFinanceCategoryBody, CreateFinanceCategoryResponse,
+  CreateFinanceTransactionBody, CreateFinanceTransactionResponse,
+  GetFinanceReportQueryParams, GetFinanceReportResponse,
+  ListFinanceCategoriesResponse, ListFinanceTransactionsQueryParams, ListFinanceTransactionsResponse,
+  ListCashMovementsResponse,
+  CreateEmployeeBody, CreateEmployeeResponse, ListEmployeesResponse,
+  CreatePayrollBody, CreatePayrollResponse, ListPayrollResponse, PayPayrollBody, PayPayrollParams, PayPayrollResponse,
   CreatePlanBody,
   CreatePlanResponse,
   CreateSubscriptionBody,
@@ -32,7 +39,7 @@ import {
   UpdatePlanParams,
   UpdatePlanResponse,
 } from "@workspace/api-zod";
-import { db, auditLogTable, clubUsersTable, membersTable, paymentsTable, plansTable, subscriptionsTable } from "@workspace/db";
+import { db, auditLogTable, cashMovementsTable, clubUsersTable, employeesTable, financeCategoriesTable, financialTransactionsTable, membersTable, payrollEntriesTable, paymentsTable, plansTable, subscriptionsTable } from "@workspace/db";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { requireClubUser } from "../middlewares/clubAuth";
@@ -98,6 +105,10 @@ async function addPayment(
   const [payment] = await trx.insert(paymentsTable).values({
     subscriptionId, amountFils, method, createdBy, note, kind, receiptNumber: receiptNumber(),
   }).returning();
+  if (method === "cash" && (kind === "payment" || kind === "refund")) await trx.insert(cashMovementsTable).values({
+    direction: kind === "payment" ? "in" : "out", amountFils, description: `اشتراك #${subscriptionId}`,
+    referenceType: "subscription_payment", referenceId: payment.id, createdBy,
+  });
   return payment;
 }
 
@@ -325,6 +336,147 @@ router.get("/payments/:id/receipt", requireClubUser, async (req, res): Promise<v
     planName: plan?.name ?? "", amountFils: payment.amountFils, method: payment.method,
     createdAt: payment.createdAt.toISOString(), currency: "JOD",
   }));
+});
+
+router.get("/club/finance/categories", requireClubUser, async (_req, res): Promise<void> => {
+  const rows = await db.select().from(financeCategoriesTable).orderBy(financeCategoriesTable.kind, financeCategoriesTable.name);
+  res.json(ListFinanceCategoriesResponse.parse(rows));
+});
+
+router.post("/club/finance/categories", requireClubUser, async (req, res): Promise<void> => {
+  const body = CreateFinanceCategoryBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const [row] = await db.insert(financeCategoriesTable).values(body.data).returning();
+  await audit(req.clubUser!.clerkUserId, "finance_category.created", "finance_category", row.id);
+  res.status(201).json(CreateFinanceCategoryResponse.parse(row));
+});
+
+router.get("/club/finance/transactions", requireClubUser, async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" ? req.query.from : undefined;
+  const to = typeof req.query.to === "string" ? req.query.to : undefined;
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if ((from && !datePattern.test(from)) || (to && !datePattern.test(to)) || (from && to && from > to)) {
+    res.status(400).json({ error: "نطاق التاريخ غير صالح" }); return;
+  }
+  const conditions = [from ? sql`${financialTransactionsTable.transactionDate} >= ${from}` : undefined, to ? sql`${financialTransactionsTable.transactionDate} <= ${to}` : undefined].filter(Boolean);
+  const rows = await db.select({ transaction: financialTransactionsTable, categoryName: financeCategoriesTable.name })
+    .from(financialTransactionsTable).leftJoin(financeCategoriesTable, eq(financialTransactionsTable.categoryId, financeCategoriesTable.id))
+    .where(conditions.length ? and(...conditions as [any, ...any[]]) : undefined).orderBy(desc(financialTransactionsTable.transactionDate), desc(financialTransactionsTable.createdAt)).limit(500);
+  res.json(ListFinanceTransactionsResponse.parse(rows.map(({ transaction, categoryName }) => ({ ...transaction, categoryName }))));
+});
+
+router.post("/club/finance/transactions", requireClubUser, async (req, res): Promise<void> => {
+  const body = CreateFinanceTransactionBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  if (body.data.categoryId) {
+    const [category] = await db.select().from(financeCategoriesTable).where(and(eq(financeCategoriesTable.id, body.data.categoryId), eq(financeCategoriesTable.active, true))).limit(1);
+    if (!category || category.kind !== body.data.kind) { res.status(400).json({ error: "التصنيف غير صالح لنوع الحركة" }); return; }
+  }
+  const transactionDate = dateOnly(body.data.transactionDate);
+  const [row] = await db.transaction(async (trx) => {
+    const [created] = await trx.insert(financialTransactionsTable).values({ ...body.data, transactionDate, createdBy: req.clubUser!.clerkUserId }).returning();
+    if (body.data.method === "cash") await trx.insert(cashMovementsTable).values({
+      direction: body.data.kind === "income" ? "in" : "out", amountFils: body.data.amountFils,
+      description: body.data.description, referenceType: "financial_transaction", referenceId: created.id, createdBy: req.clubUser!.clerkUserId,
+    });
+    return [created];
+  });
+  await audit(req.clubUser!.clerkUserId, `finance.${row.kind}.recorded`, "financial_transaction", row.id, { amountFils: row.amountFils });
+  const [category] = row.categoryId ? await db.select({ name: financeCategoriesTable.name }).from(financeCategoriesTable).where(eq(financeCategoriesTable.id, row.categoryId)).limit(1) : [];
+  res.status(201).json(CreateFinanceTransactionResponse.parse({ ...row, categoryName: category?.name ?? null }));
+});
+
+router.get("/club/finance/report", requireClubUser, async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" ? req.query.from : "";
+  const to = typeof req.query.to === "string" ? req.query.to : "";
+  const pattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!pattern.test(from) || !pattern.test(to) || from > to) { res.status(400).json({ error: "حدد فترة صحيحة للتقرير" }); return; }
+  const [transactions, paymentRows, subscriptions, payrollRows, cashRows] = await Promise.all([
+    db.select().from(financialTransactionsTable).where(and(sql`${financialTransactionsTable.transactionDate} >= ${from}`, sql`${financialTransactionsTable.transactionDate} <= ${to}`)),
+    db.select().from(paymentsTable).where(eq(paymentsTable.kind, "payment")),
+    db.select().from(subscriptionsTable),
+    db.select().from(payrollEntriesTable),
+    db.select().from(cashMovementsTable),
+  ]);
+  const paymentsInRange = paymentRows.filter((p) => { const d = jordanDate(p.createdAt); return d >= from && d <= to; }).reduce((sum, p) => sum + p.amountFils, 0);
+  const incomeFils = paymentsInRange + transactions.filter((t) => t.kind === "income").reduce((sum, t) => sum + t.amountFils, 0);
+  const expensesFils = transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + t.amountFils, 0);
+  const totalPaid = new Map<number, number>();
+  for (const p of paymentRows) totalPaid.set(p.subscriptionId, (totalPaid.get(p.subscriptionId) ?? 0) + p.amountFils);
+  const debtFils = subscriptions.reduce((sum, s) => sum + Math.max(0, s.priceFils - s.discountFils - (totalPaid.get(s.id) ?? 0)), 0);
+  const payrollDueFils = payrollRows.reduce((sum, p) => sum + Math.max(0, p.amountFils - p.paidFils), 0);
+  const cashBalanceFils = cashRows.reduce((sum, row) => sum + (row.direction === "in" ? row.amountFils : -row.amountFils), 0);
+  res.json(GetFinanceReportResponse.parse({ from, to, incomeFils, expensesFils, netFils: incomeFils - expensesFils, debtFils, payrollDueFils, cashBalanceFils }));
+});
+
+router.get("/club/cash-movements", requireClubUser, async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" ? req.query.from : undefined;
+  const to = typeof req.query.to === "string" ? req.query.to : undefined;
+  const valid = (value?: string) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!valid(from) || !valid(to) || (from && to && from > to)) { res.status(400).json({ error: "نطاق التاريخ غير صالح" }); return; }
+  const rows = await db.select().from(cashMovementsTable).orderBy(desc(cashMovementsTable.createdAt)).limit(1000);
+  const filtered = rows.filter((row) => { const date = jordanDate(row.createdAt); return (!from || date >= from) && (!to || date <= to); });
+  res.json(ListCashMovementsResponse.parse(filtered.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }))));
+});
+
+router.get("/club/employees", requireClubUser, async (_req, res): Promise<void> => {
+  res.json(ListEmployeesResponse.parse(await db.select().from(employeesTable).orderBy(desc(employeesTable.createdAt))));
+});
+
+router.post("/club/employees", requireClubUser, async (req, res): Promise<void> => {
+  const body = CreateEmployeeBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const [row] = await db.insert(employeesTable).values({ ...body.data, hiredAt: body.data.hiredAt ? dateOnly(body.data.hiredAt) : null }).returning();
+  await audit(req.clubUser!.clerkUserId, "employee.created", "employee", row.id);
+  res.status(201).json(CreateEmployeeResponse.parse(row));
+});
+
+async function payrollViews() {
+  const rows = await db.select({ payroll: payrollEntriesTable, employeeName: employeesTable.name })
+    .from(payrollEntriesTable).innerJoin(employeesTable, eq(payrollEntriesTable.employeeId, employeesTable.id)).orderBy(desc(payrollEntriesTable.dueDate));
+  return rows.map(({ payroll, employeeName }) => ({ ...payroll, employeeName, status: payroll.paidFils >= payroll.amountFils ? "paid" : payroll.paidFils > 0 ? "partial" : "due" }));
+}
+
+router.get("/club/payroll", requireClubUser, async (_req, res): Promise<void> => {
+  res.json(ListPayrollResponse.parse(await payrollViews()));
+});
+
+router.post("/club/payroll", requireClubUser, async (req, res): Promise<void> => {
+  const body = CreatePayrollBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const [employee] = await db.select().from(employeesTable).where(and(eq(employeesTable.id, body.data.employeeId), eq(employeesTable.active, true))).limit(1);
+  if (!employee) { res.status(404).json({ error: "الموظف غير موجود أو غير نشط" }); return; }
+  const [duplicate] = await db.select().from(payrollEntriesTable).where(and(eq(payrollEntriesTable.employeeId, employee.id), eq(payrollEntriesTable.period, body.data.period))).limit(1);
+  if (duplicate) { res.status(409).json({ error: "تم إنشاء راتب لهذا الموظف عن هذه الفترة" }); return; }
+  const [row] = await db.insert(payrollEntriesTable).values({ ...body.data, dueDate: dateOnly(body.data.dueDate) }).onConflictDoNothing().returning();
+  if (!row) { res.status(409).json({ error: "تم إنشاء راتب لهذا الموظف عن هذه الفترة" }); return; }
+  await audit(req.clubUser!.clerkUserId, "payroll.created", "payroll", row.id);
+  res.status(201).json(CreatePayrollResponse.parse({ ...row, employeeName: employee.name, status: "due" }));
+});
+
+router.post("/club/payroll/:id/pay", requireClubUser, async (req, res): Promise<void> => {
+  const params = PayPayrollParams.safeParse(req.params);
+  const body = PayPayrollBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "بيانات صرف الراتب غير صحيحة" }); return; }
+  const [entry] = await db.select().from(payrollEntriesTable).where(eq(payrollEntriesTable.id, params.data.id)).limit(1);
+  if (!entry) { res.status(404).json({ error: "سجل الراتب غير موجود" }); return; }
+  if (body.data.amountFils > entry.amountFils - entry.paidFils) { res.status(400).json({ error: "المبلغ أكبر من الرصيد المستحق" }); return; }
+  const [employee] = await db.select().from(employeesTable).where(eq(employeesTable.id, entry.employeeId)).limit(1);
+  const [updated] = await db.transaction(async (trx) => {
+    const [saved] = await trx.update(payrollEntriesTable).set({ paidFils: entry.paidFils + body.data.amountFils }).where(eq(payrollEntriesTable.id, entry.id)).returning();
+    const [expense] = await trx.insert(financialTransactionsTable).values({
+      kind: "expense", amountFils: body.data.amountFils, method: body.data.method,
+      description: `راتب ${employee?.name ?? ""} - ${entry.period}`, transactionDate: jordanDate(),
+      createdBy: req.clubUser!.clerkUserId,
+    }).returning();
+    if (body.data.method === "cash") await trx.insert(cashMovementsTable).values({
+      direction: "out", amountFils: body.data.amountFils, description: expense.description,
+      referenceType: "payroll", referenceId: entry.id, createdBy: req.clubUser!.clerkUserId,
+    });
+    return [saved];
+  });
+  await audit(req.clubUser!.clerkUserId, "payroll.payment_recorded", "payroll", entry.id, { amountFils: body.data.amountFils });
+  res.json(PayPayrollResponse.parse({ ...updated, employeeName: employee?.name ?? "", status: updated.paidFils >= updated.amountFils ? "paid" : "partial" }));
 });
 
 export default router;

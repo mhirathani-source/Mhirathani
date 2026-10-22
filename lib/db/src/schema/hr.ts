@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, date, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const employeesTable = pgTable("employees", {
@@ -25,7 +25,7 @@ export const payrollEntriesTable = pgTable(
     status: text("status").notNull().default("due"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("payroll_due_date_idx").on(table.dueDate)],
+  (table) => [index("payroll_due_date_idx").on(table.dueDate), uniqueIndex("payroll_employee_period_unique").on(table.employeeId, table.period)],
 );
 
 export const insertEmployeeSchema = createInsertSchema(employeesTable).omit({ id: true, createdAt: true });

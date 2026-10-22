@@ -274,6 +274,173 @@ paths:
               schema: { $ref: "#/components/schemas/Receipt" }
         "404":
           description: Payment not found
+  /club/finance/categories:
+    get:
+      operationId: listFinanceCategories
+      tags: [club]
+      summary: List finance categories
+      responses:
+        "200":
+          description: Finance categories
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FinanceCategory" } }
+    post:
+      operationId: createFinanceCategory
+      tags: [club]
+      summary: Create finance category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceCategoryInput" }
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceCategory" }
+  /club/finance/transactions:
+    get:
+      operationId: listFinanceTransactions
+      tags: [club]
+      summary: List finance transactions
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Transactions in the requested period
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FinanceTransaction" } }
+    post:
+      operationId: createFinanceTransaction
+      tags: [club]
+      summary: Record income or expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinanceTransactionInput" }
+      responses:
+        "201":
+          description: Transaction recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceTransaction" }
+  /club/finance/report:
+    get:
+      operationId: getFinanceReport
+      tags: [club]
+      summary: Calculate financial totals and outstanding balances
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Financial report for the selected dates
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceReport" }
+  /club/cash-movements:
+    get:
+      operationId: listCashMovements
+      tags: [club]
+      summary: List cash register movements
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Cash register movements
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CashMovement" } }
+  /club/employees:
+    get:
+      operationId: listEmployees
+      tags: [club]
+      summary: List employees
+      responses:
+        "200":
+          description: Employees
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Employee" } }
+    post:
+      operationId: createEmployee
+      tags: [club]
+      summary: Add employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeInput" }
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /club/payroll:
+    get:
+      operationId: listPayroll
+      tags: [club]
+      summary: List payroll entries
+      responses:
+        "200":
+          description: Payroll entries
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollEntry" } }
+    post:
+      operationId: createPayroll
+      tags: [club]
+      summary: Create a monthly payroll entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollInput" }
+      responses:
+        "201":
+          description: Payroll entry created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollEntry" }
+  /club/payroll/{id}/pay:
+    post:
+      operationId: payPayroll
+      tags: [club]
+      summary: Record a payroll payment
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollPaymentInput" }
+      responses:
+        "200":
+          description: Updated payroll balance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollEntry" }
 components:
   parameters:
     Id:
@@ -437,4 +604,109 @@ components:
         method: { type: string }
         createdAt: { type: string, format: date-time }
         currency: { type: string, enum: [JOD] }
+    FinanceCategory:
+      type: object
+      required: [id, name, kind, active]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [income, expense] }
+        active: { type: boolean }
+    FinanceCategoryInput:
+      type: object
+      required: [name, kind]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        kind: { type: string, enum: [income, expense] }
+    FinanceTransaction:
+      type: object
+      required: [id, kind, amountFils, method, description, transactionDate, createdAt]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [income, expense] }
+        categoryId: { type: [integer, "null"] }
+        categoryName: { type: [string, "null"] }
+        amountFils: { type: integer }
+        method: { type: string, enum: [cash, card, bank_transfer, wallet] }
+        description: { type: string }
+        transactionDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+    FinanceTransactionInput:
+      type: object
+      required: [kind, amountFils, method, description, transactionDate]
+      properties:
+        kind: { type: string, enum: [income, expense] }
+        categoryId: { type: [integer, "null"] }
+        amountFils: { type: integer, minimum: 1 }
+        method: { type: string, enum: [cash, card, bank_transfer, wallet] }
+        description: { type: string, minLength: 2, maxLength: 500 }
+        transactionDate: { type: string, format: date }
+    FinanceReport:
+      type: object
+      required: [from, to, incomeFils, expensesFils, netFils, debtFils, payrollDueFils, cashBalanceFils]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        incomeFils: { type: integer }
+        expensesFils: { type: integer }
+        netFils: { type: integer }
+        debtFils: { type: integer }
+        payrollDueFils: { type: integer }
+        cashBalanceFils: { type: integer }
+    CashMovement:
+      type: object
+      required: [id, direction, amountFils, description, createdAt]
+      properties:
+        id: { type: integer }
+        direction: { type: string, enum: [in, out] }
+        amountFils: { type: integer }
+        description: { type: string }
+        referenceType: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+    Employee:
+      type: object
+      required: [id, name, position, baseSalaryFils, active]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: [string, "null"] }
+        position: { type: string }
+        baseSalaryFils: { type: integer }
+        active: { type: boolean }
+        hiredAt: { type: [string, "null"], format: date }
+    EmployeeInput:
+      type: object
+      required: [name, position, baseSalaryFils]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        phone: { type: [string, "null"], maxLength: 24 }
+        position: { type: string, minLength: 2, maxLength: 100 }
+        baseSalaryFils: { type: integer, minimum: 0 }
+        hiredAt: { type: [string, "null"], format: date }
+    PayrollEntry:
+      type: object
+      required: [id, employeeId, employeeName, period, amountFils, paidFils, dueDate, status]
+      properties:
+        id: { type: integer }
+        employeeId: { type: integer }
+        employeeName: { type: string }
+        period: { type: string }
+        amountFils: { type: integer }
+        paidFils: { type: integer }
+        dueDate: { type: string, format: date }
+        status: { type: string, enum: [due, partial, paid] }
+    PayrollInput:
+      type: object
+      required: [employeeId, period, amountFils, dueDate]
+      properties:
+        employeeId: { type: integer, minimum: 1 }
+        period: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+        amountFils: { type: integer, minimum: 0 }
+        dueDate: { type: string, format: date }
+    PayrollPaymentInput:
+      type: object
+      required: [amountFils, method]
+      properties:
+        amountFils: { type: integer, minimum: 1 }
+        method: { type: string, enum: [cash, card, bank_transfer, wallet] }
 

@@ -445,3 +445,251 @@ export const GetPaymentReceiptResponse = zod.object({
 })
 
 
+/**
+ * @summary List finance categories
+ */
+export const ListFinanceCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "kind": zod.enum(['income', 'expense']),
+  "active": zod.boolean()
+})
+export const ListFinanceCategoriesResponse = zod.array(ListFinanceCategoriesResponseItem)
+
+
+/**
+ * @summary Create finance category
+ */
+export const createFinanceCategoryBodyNameMin = 2;
+export const createFinanceCategoryBodyNameMax = 100;
+
+
+
+export const CreateFinanceCategoryBody = zod.object({
+  "name": zod.string().min(createFinanceCategoryBodyNameMin).max(createFinanceCategoryBodyNameMax),
+  "kind": zod.enum(['income', 'expense'])
+})
+
+export const CreateFinanceCategoryResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "kind": zod.enum(['income', 'expense']),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary List finance transactions
+ */
+export const ListFinanceTransactionsQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListFinanceTransactionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['income', 'expense']),
+  "categoryId": zod.number().int().nullish(),
+  "categoryName": zod.string().nullish(),
+  "amountFils": zod.number().int(),
+  "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
+  "description": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFinanceTransactionsResponse = zod.array(ListFinanceTransactionsResponseItem)
+
+
+/**
+ * @summary Record income or expense
+ */
+
+export const createFinanceTransactionBodyDescriptionMin = 2;
+export const createFinanceTransactionBodyDescriptionMax = 500;
+
+
+
+export const CreateFinanceTransactionBody = zod.object({
+  "kind": zod.enum(['income', 'expense']),
+  "categoryId": zod.number().int().nullish(),
+  "amountFils": zod.number().int().min(1),
+  "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
+  "description": zod.string().min(createFinanceTransactionBodyDescriptionMin).max(createFinanceTransactionBodyDescriptionMax),
+  "transactionDate": zod.coerce.date()
+})
+
+export const CreateFinanceTransactionResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['income', 'expense']),
+  "categoryId": zod.number().int().nullish(),
+  "categoryName": zod.string().nullish(),
+  "amountFils": zod.number().int(),
+  "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
+  "description": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Calculate financial totals and outstanding balances
+ */
+export const GetFinanceReportQueryParams = zod.object({
+  "from": zod.date(),
+  "to": zod.date()
+})
+
+export const GetFinanceReportResponse = zod.object({
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "incomeFils": zod.number().int(),
+  "expensesFils": zod.number().int(),
+  "netFils": zod.number().int(),
+  "debtFils": zod.number().int(),
+  "payrollDueFils": zod.number().int(),
+  "cashBalanceFils": zod.number().int()
+})
+
+
+/**
+ * @summary List cash register movements
+ */
+export const ListCashMovementsQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListCashMovementsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "direction": zod.enum(['in', 'out']),
+  "amountFils": zod.number().int(),
+  "description": zod.string(),
+  "referenceType": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCashMovementsResponse = zod.array(ListCashMovementsResponseItem)
+
+
+/**
+ * @summary List employees
+ */
+export const ListEmployeesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "phone": zod.string().nullish(),
+  "position": zod.string(),
+  "baseSalaryFils": zod.number().int(),
+  "active": zod.boolean(),
+  "hiredAt": zod.coerce.date().nullish()
+})
+export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem)
+
+
+/**
+ * @summary Add employee
+ */
+export const createEmployeeBodyNameMin = 2;
+export const createEmployeeBodyNameMax = 120;
+
+export const createEmployeeBodyPhoneMax = 24;
+
+export const createEmployeeBodyPositionMin = 2;
+export const createEmployeeBodyPositionMax = 100;
+
+export const createEmployeeBodyBaseSalaryFilsMin = 0;
+
+
+
+export const CreateEmployeeBody = zod.object({
+  "name": zod.string().min(createEmployeeBodyNameMin).max(createEmployeeBodyNameMax),
+  "phone": zod.string().max(createEmployeeBodyPhoneMax).nullish(),
+  "position": zod.string().min(createEmployeeBodyPositionMin).max(createEmployeeBodyPositionMax),
+  "baseSalaryFils": zod.number().int().min(createEmployeeBodyBaseSalaryFilsMin),
+  "hiredAt": zod.coerce.date().nullish()
+})
+
+export const CreateEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "phone": zod.string().nullish(),
+  "position": zod.string(),
+  "baseSalaryFils": zod.number().int(),
+  "active": zod.boolean(),
+  "hiredAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary List payroll entries
+ */
+export const ListPayrollResponseItem = zod.object({
+  "id": zod.number().int(),
+  "employeeId": zod.number().int(),
+  "employeeName": zod.string(),
+  "period": zod.string(),
+  "amountFils": zod.number().int(),
+  "paidFils": zod.number().int(),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['due', 'partial', 'paid'])
+})
+export const ListPayrollResponse = zod.array(ListPayrollResponseItem)
+
+
+/**
+ * @summary Create a monthly payroll entry
+ */
+
+export const createPayrollBodyPeriodRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const createPayrollBodyAmountFilsMin = 0;
+
+
+
+export const CreatePayrollBody = zod.object({
+  "employeeId": zod.number().int().min(1),
+  "period": zod.string().regex(createPayrollBodyPeriodRegExp),
+  "amountFils": zod.number().int().min(createPayrollBodyAmountFilsMin),
+  "dueDate": zod.coerce.date()
+})
+
+export const CreatePayrollResponse = zod.object({
+  "id": zod.number().int(),
+  "employeeId": zod.number().int(),
+  "employeeName": zod.string(),
+  "period": zod.string(),
+  "amountFils": zod.number().int(),
+  "paidFils": zod.number().int(),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['due', 'partial', 'paid'])
+})
+
+
+/**
+ * @summary Record a payroll payment
+ */
+
+
+
+export const PayPayrollParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const PayPayrollBody = zod.object({
+  "amountFils": zod.number().int().min(1),
+  "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet'])
+})
+
+export const PayPayrollResponse = zod.object({
+  "id": zod.number().int(),
+  "employeeId": zod.number().int(),
+  "employeeName": zod.string(),
+  "period": zod.string(),
+  "amountFils": zod.number().int(),
+  "paidFils": zod.number().int(),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['due', 'partial', 'paid'])
+})
+
+
