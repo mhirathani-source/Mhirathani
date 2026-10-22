@@ -1,6 +1,6 @@
-# [Project name]
+# Prime Boxing Academy Management System
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+نظام عربي RTL لإدارة أكاديمية ملاكمة واحدة؛ العملة الدينار الأردني والتوقيت Asia/Amman.
 
 ## Run & Operate
 
@@ -22,23 +22,35 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- واجهة الأكاديمية: `artifacts/club-manager/`
+- خادم API المشترك: `artifacts/api-server/`
+- عقد API: `lib/api-spec/openapi.yaml`
+- مخطط PostgreSQL: `lib/db/src/schema/`
+- سجل التدقيق: `lib/db/src/schema/auditLog.ts`
+- تعليمات التشغيل والإعداد: `README.md` و`docs/ENVIRONMENT.md`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- مصادقة المستخدمين عبر Clerk؛ أدوار التطبيق تُفرض على الخادم ولا يكفي إخفاء الروابط في الواجهة.
+- لا تُمنح صلاحية المدير إلا لحساب يطابق `CLUB_ADMIN_EMAIL` بعد تسجيل الدخول الموثق.
+- المبالغ المالية تُخزن كأعداد صحيحة بالفلس الأردني؛ لا تستخدم floating point للحسابات المالية.
+- قاعدة بيانات التطوير خالية من بيانات الأعضاء التجريبية. الأقسام غير المنفذة يجب أن تبقى موسومة «قيد التطوير».
+- لا تُنشر الأكاديمية للعامة قبل ضبط حساب المدير الأول والتحقق من الأمان.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+المرحلة الأولى تؤسس الدخول والبيانات والواجهة. إدارة المشتركين والباقات والاشتراكات والدفعات والإيصالات موجودة؛ المصاريف والرواتب والتقارير وWhatsApp Business ما تزال قيد التطوير.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- الاسم Prime Boxing Academy، والعرض عربي بالكامل باتجاه RTL وبألوان الأسود والأصفر والأبيض.
+- لا تُستخدم بيانات تجريبية في الإنتاج، ولا تُعلن ميزة واتساب قبل إعدادها واختبارها.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- تعرّف البريد الأول للمدير عبر `CLUB_ADMIN_EMAIL` في متغيرات البيئة؛ لا تضع كلمة مرور ثابتة في التطبيق.
+- بعد تغيير مخطط Drizzle في التطوير، استخدم `pnpm --filter @workspace/db run push`. اتبع مسار Replit المدعوم لتغييرات الإنتاج.
+- تتضمن `lib/db/drizzle/0000_dark_leech.sql` لقطة أساس للمخطط. قاعدة التطوير أُنشئت عبر `push`، لذلك لا تعِد تشغيل migration الأساس عليها.
 
 ## Pointers
 
