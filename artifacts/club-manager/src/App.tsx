@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { arSA } from "@clerk/localizations";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   getGetClubDashboardQueryKey, getGetClubSessionQueryKey, getListMembersQueryKey,
@@ -162,7 +163,7 @@ function MainRouter() {
 function ClerkApp() {
   const [,setLocation]=useLocation();
   return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}
-    localization={{signIn:{start:{title:"مرحبًا بعودتك",subtitle:"سجّل الدخول لإدارة النادي"}},signUp:{start:{title:"إنشاء حساب",subtitle:"ابدأ بإعداد حساب إدارة النادي"}}}}
+    localization={{ ...arSA, formFieldInputPlaceholder__emailAddress: "أدخل بريدك الإلكتروني", formFieldInputPlaceholder__emailAddress_username: "أدخل بريدك الإلكتروني" }}
     routerPush={(to)=>setLocation(stripBase(to))} routerReplace={(to)=>setLocation(stripBase(to),{replace:true})}>
     <QueryClientProvider client={queryClient}><Show when="signed-out"><MainRouter/></Show><Show when="signed-in"><MainRouter/></Show></QueryClientProvider>
   </ClerkProvider>;
