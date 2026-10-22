@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -26,6 +26,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path; }
+async function clubApi<T>(path:string,init:RequestInit={}):Promise<T>{const response=await fetch(`${basePath}/api${path}`,{...init,credentials:"same-origin",headers:{"Content-Type":"application/json",...(init.headers||{})}});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.error||"تعذر تنفيذ الطلب");return body as T;}
 const appearance = {
   theme: shadcn,
   cssLayerName: "clerk",
@@ -62,6 +63,7 @@ const navItems = [
   { href: "/subscriptions", title: "الاشتراكات", icon: BadgeCheck },
   { href: "/plans", title: "الباقات", icon: ClipboardList },
   { href: "/finance", title: "المالية والرواتب", icon: Wallet },
+  { href: "/settings/whatsapp", title: "واتساب", icon: MessageCircle },
   { href: "/reports", title: "التقارير", icon: ChartNoAxesCombined },
 ];
 
@@ -92,7 +94,8 @@ function Dashboard() {
   const summary = query.data;
   const today = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Amman"}).format(new Date());
   const finance = useGetFinanceReport({from:`${today.slice(0,7)}-01`,to:today});
-  return <><PageHeading eyebrow="نظرة عامة" title="لوحة التحكم"><Link href="/members" className="button primary"><Plus size={16}/>إضافة مشترك</Link></PageHeading>
+  const income=finance.data?.incomeFils??0, expenses=finance.data?.expensesFils??0, chartMax=Math.max(income,expenses,1);
+  return <><PageHeading eyebrow="نظرة عامة" title="لوحة التحكم"><div className="quick-actions"><Link href="/members" className="button primary"><Plus size={16}/>مشترك جديد</Link><Link href="/subscriptions" className="button ghost">اشتراك جديد</Link><Link href="/finance" className="button ghost">تسجيل حركة مالية</Link></div></PageHeading>
     {query.isLoading ? <div className="loading-panel">جارٍ تحميل بيانات النادي…</div> : query.error ? <div className="error-panel">تعذر تحميل لوحة التحكم. تحقق من الاتصال والصلاحيات.</div> : <>
       <div className="stats-grid">
         <Stat title="المشتركون النشطون" value={summary?.activeMembers??0} icon={<Users/>} tone="green"/>
@@ -103,6 +106,7 @@ function Dashboard() {
         <Stat title="رواتب مستحقة" value={<Money fils={finance.data?.payrollDueFils??0}/>} icon={<Users/>} tone="amber"/>
         <Stat title="رصيد الصندوق" value={<Money fils={finance.data?.cashBalanceFils??0}/>} icon={<Wallet/>} tone="blue"/>
       </div>
+      <div className="panel chart-panel"><div className="panel-head"><div><p className="eyebrow">ملخص الشهر</p><h2>الإيرادات والمصروفات</h2></div><span className="period-pill">{today.slice(0,7)}</span></div><div className="chart-row"><span>الإيرادات</span><div className="chart-track"><i className="chart-income" style={{width:`${Math.max(2,income/chartMax*100)}%`}}/></div><strong><Money fils={income}/></strong></div><div className="chart-row"><span>المصروفات</span><div className="chart-track"><i className="chart-expense" style={{width:`${expenses?Math.max(2,expenses/chartMax*100):0}%`}}/></div><strong><Money fils={expenses}/></strong></div></div>
       <div className="overview-grid"><div className="panel revenue-panel"><div className="panel-head"><div><p className="eyebrow">التحصيل</p><h2>الإيرادات المحصلة</h2></div><span className="period-pill">هذا الشهر</span></div><div className="revenue-total"><Money fils={summary?.monthlyCollectedFils??0}/></div><div className="revenue-note"><ArrowDownLeft size={16}/> مجموع الدفعات المسجلة هذا الشهر</div><div className="revenue-foot"><span>إجمالي التحصيل المسجل</span><strong><Money fils={summary?.collectedFils??0}/></strong></div></div>
       <div className="panel"><div className="panel-head"><div><p className="eyebrow">آخر الإضافات</p><h2>المشتركون الجدد</h2></div><Link href="/members" className="text-link">عرض الكل</Link></div>{summary?.recentMembers?.length ? <div className="compact-list">{summary.recentMembers.map(m=><div className="compact-row" key={m.id}><span className="avatar soft">{m.name.slice(0,1)}</span><div><strong>{m.name}</strong><small>{m.phone}</small></div><span className="status-pill success">مشترك</span></div>)}</div>:<Empty text="لا يوجد مشتركون بعد. أضف أول مشترك للبدء."/>}</div></div>
     </>}
@@ -184,12 +188,39 @@ function FinancePage() {
   </>;
 }
 
+type WhatsAppSettingsView={wabaId:string;phoneNumberId:string;enabled:boolean;configured:boolean;templates:{id:number;name:string;body:string;status:string;providerTemplateName:string|null}[]};
+function WhatsAppSettingsPage() {
+  const [settings,setSettings]=useState<WhatsAppSettingsView|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const load=()=>clubApi<WhatsAppSettingsView>("/club/whatsapp/settings").then(setSettings).catch(e=>setError(e.message)).finally(()=>setLoading(false));
+  useEffect(()=>{void load();},[]);
+  async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setBusy(true);setError("");try{const result=await clubApi<WhatsAppSettingsView>("/club/whatsapp/settings",{method:"PUT",body:JSON.stringify({wabaId:String(f.get("wabaId")),phoneNumberId:String(f.get("phoneNumberId")),enabled:f.get("enabled")==="on"})});setSettings(current=>current?{...current,...result}:current);}catch(e){setError(e instanceof Error?e.message:"تعذر الحفظ");}finally{setBusy(false);}}
+  async function createTemplate(key:string,body:string){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/create",{method:"POST",body:JSON.stringify({key,body})});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر إرسال القالب للمراجعة");}finally{setBusy(false);}}
+  async function syncTemplates(){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/sync",{method:"POST"});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر تحديث حالة القوالب");}finally{setBusy(false);}}
+  const templateInfo=[["expiry_2_days","قبل الانتهاء بيومين"],["expiry_today","يوم الانتهاء"],["manual","تذكير يدوي"]] as const;
+  return <><PageHeading eyebrow="ربط Meta الرسمي" title="إعدادات WhatsApp Business"/><div className="panel notice-panel"><strong>الإرسال لا يعمل بعد.</strong><p>يتطلب رقم حساب WhatsApp Business، ومعرّف رقم الهاتف، وقوالب عربية معتمدة من Meta. قبول الرسالة من Meta لا يعني تسليمها للهاتف.</p></div>
+    {loading?<div className="loading-panel">جارٍ تحميل الإعدادات…</div>:<><form className="panel form-panel" onSubmit={save}><h2>بيانات الحساب</h2><div className="form-grid"><label>معرّف حساب WhatsApp Business<input name="wabaId" defaultValue={settings?.wabaId||""} required/></label><label>معرّف رقم الهاتف<input name="phoneNumberId" defaultValue={settings?.phoneNumberId||""} required/></label><label className="checkbox-label"><input type="checkbox" name="enabled" defaultChecked={settings?.enabled}/> تفعيل التذكيرات التلقائية</label></div><p className="muted">التذكيران المجدولان: قبل الانتهاء بيومين ويوم الانتهاء. تعمل المهمة كل دقيقة داخل خادم الـAPI؛ لا تعتمد على بقاء المدير مسجّل الدخول.</p><button className="button primary" disabled={busy}>حفظ الإعدادات</button></form>
+    <div className="panel table-panel"><div className="table-toolbar"><div><h2>قوالب الرسائل العربية</h2><small>تُرسل القوالب إلى Meta للمراجعة؛ يلزم اعتمادها قبل الإرسال</small></div><button className="button ghost" onClick={syncTemplates} disabled={busy||!settings?.wabaId}>تحديث الحالات</button></div>{templateInfo.map(([key,title])=>{const t=settings?.templates.find(x=>x.name===key);return <TemplateForm key={key} templateKey={key} title={title} body={t?.body||""} status={t?.status||"draft"} busy={busy} onSubmit={body=>createTemplate(key,body)}/>})}</div></>}
+    {error&&<div className="error-panel">{error}</div>}</>;
+}
+
+function TemplateForm({templateKey,title,body,status,busy,onSubmit}:{templateKey:string;title:string;body:string;status:string;busy:boolean;onSubmit:(body:string)=>void}) {
+  const [value,setValue]=useState(body);
+  useEffect(()=>setValue(body),[body]);
+  return <form className="whatsapp-template-row" onSubmit={e=>{e.preventDefault();onSubmit(value);}}><label>{title}<textarea required minLength={10} maxLength={1024} value={value} onChange={e=>setValue(e.target.value)} placeholder="مرحبًا {{1}}، ... {{2}} ... {{3}}"/></label><div className="template-meta"><span className={`status-pill ${status==="approved"?"success":"warn"}`}>{status==="approved"?"معتمد":status==="pending"?"بانتظار مراجعة Meta":status}</span><button className="mini-button" disabled={busy}>إنشاء / إعادة إرسال للمراجعة</button></div></form>;
+}
+
 function MemberDetail() {
   const {id:rawId}=useParams();const id=Number(rawId);const detailQuery=useGetMember(id,{query:{enabled:Number.isInteger(id)&&id>0,queryKey:getGetMemberQueryKey(id)}});
-  const info=detailQuery.data;
+  const info=detailQuery.data;const [waLogs,setWaLogs]=useState<any[]>([]);const [waMessage,setWaMessage]=useState("");const [waBusy,setWaBusy]=useState(false);
+  const loadWaLogs=()=>clubApi<any[]>(`/members/${id}/whatsapp-reminders`).then(setWaLogs).catch(()=>setWaLogs([]));
+  useEffect(()=>{if(Number.isInteger(id)&&id>0)void loadWaLogs();},[id]);
+  async function sendManualReminder(){setWaBusy(true);setWaMessage("");try{const result=await clubApi<{message:string}>(`/members/${id}/whatsapp-reminder`,{method:"POST"});setWaMessage(result.message);await loadWaLogs();}catch(e){setWaMessage(e instanceof Error?e.message:"تعذر إرسال التذكير");}finally{setWaBusy(false);}}
   if(detailQuery.isLoading)return <div className="loading-panel">جارٍ تحميل الملف…</div>;
   if(!info)return <div className="panel"><Empty text="تعذر العثور على ملف المشترك."/></div>;
-  return <><PageHeading eyebrow="ملف المشترك" title={info.member.name}><Link href="/members" className="button ghost">العودة للمشتركين</Link></PageHeading><div className="panel member-summary"><div className="avatar large">{info.member.name.slice(0,1)}</div><div><h2>{info.member.name}</h2><p dir="ltr">{info.member.phone}</p><small>تاريخ التسجيل: {info.member.joinedAt.slice(0,10)}</small></div></div><div className="panel table-panel"><div className="table-toolbar"><h2>الاشتراكات</h2></div>{info.subscriptions.length?<div className="table-scroll"><table><thead><tr><th>الباقة</th><th>الفترة</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>{info.subscriptions.map(s=><tr key={s.id}><td>{s.planName}</td><td>{s.startDate} — {s.endDate}</td><td><Money fils={s.paidFils}/></td><td><Money fils={s.balanceFils}/></td><td>{s.status}</td></tr>)}</tbody></table></div>:<Empty text="لا يوجد سجل اشتراكات لهذا المشترك."/>}</div><div className="panel table-panel history-panel"><div className="table-toolbar"><div><h2>سجل الدفعات</h2><small>الإيصالات قابلة للطباعة</small></div></div>{info.payments.length?<div className="table-scroll"><table><thead><tr><th>رقم الإيصال</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>طريقة الدفع</th><th>الإيصال</th></tr></thead><tbody>{info.payments.map(p=><tr key={p.id}><td>{p.receiptNumber}</td><td>{p.createdAt.slice(0,10)}</td><td>{p.kind==="payment"?"دفعة":p.kind==="discount"?"خصم":"استرداد"}</td><td><Money fils={p.amountFils}/></td><td>{p.method}</td><td>{p.kind==="payment"&&<Link href={`/receipt/${p.id}`} className="text-link">عرض وطباعة</Link>}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد دفعات مسجلة لهذا المشترك."/>}</div></>;
+  return <><PageHeading eyebrow="ملف المشترك" title={info.member.name}><div className="quick-actions"><button className="button primary" onClick={sendManualReminder} disabled={waBusy}>إرسال تذكير واتساب</button><Link href="/members" className="button ghost">العودة للمشتركين</Link></div></PageHeading>{waMessage&&<div className="notice-panel">{waMessage}</div>}<div className="panel member-summary"><div className="avatar large">{info.member.name.slice(0,1)}</div><div><h2>{info.member.name}</h2><p dir="ltr">{info.member.phone}</p><small>تاريخ التسجيل: {info.member.joinedAt.slice(0,10)}</small></div></div><div className="panel table-panel"><div className="table-toolbar"><h2>الاشتراكات</h2></div>{info.subscriptions.length?<div className="table-scroll"><table><thead><tr><th>الباقة</th><th>الفترة</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>{info.subscriptions.map(s=><tr key={s.id}><td>{s.planName}</td><td>{s.startDate} — {s.endDate}</td><td><Money fils={s.paidFils}/></td><td><Money fils={s.balanceFils}/></td><td>{s.status}</td></tr>)}</tbody></table></div>:<Empty text="لا يوجد سجل اشتراكات لهذا المشترك."/>}</div><div className="panel table-panel history-panel"><div className="table-toolbar"><div><h2>سجل الدفعات</h2><small>الإيصالات قابلة للطباعة</small></div></div>{info.payments.length?<div className="table-scroll"><table><thead><tr><th>رقم الإيصال</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>طريقة الدفع</th><th>الإيصال</th></tr></thead><tbody>{info.payments.map(p=><tr key={p.id}><td>{p.receiptNumber}</td><td>{p.createdAt.slice(0,10)}</td><td>{p.kind==="payment"?"دفعة":p.kind==="discount"?"خصم":"استرداد"}</td><td><Money fils={p.amountFils}/></td><td>{p.method}</td><td>{p.kind==="payment"&&<Link href={`/receipt/${p.id}`} className="text-link">عرض وطباعة</Link>}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد دفعات مسجلة لهذا المشترك."/>}</div><div className="panel table-panel"><h2>سجل تذكيرات واتساب</h2>{waLogs.length?<div className="table-scroll"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>{waLogs.map(log=><tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("ar-JO",{timeZone:"Asia/Amman"})}</td><td>{log.triggerDays==="2"?"قبل الانتهاء بيومين":log.triggerDays==="0"?"يوم الانتهاء":"يدوي"}</td><td>{log.status==="accepted"?"قبلتها Meta":log.status==="failed"?"فشل":log.status}</td><td>{log.error||"القبول لا يؤكد التسليم"}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد تذكيرات مسجلة."/ >}</div></>;
 }
 
 function ReceiptPage() {
