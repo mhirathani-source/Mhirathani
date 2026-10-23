@@ -85,7 +85,24 @@ pnpm exec cap open ios
 
 في Xcode اختر فريق Apple Developer، واضبط Signing & Capabilities، وحافظ على bundle identifier أعلاه، ثم اختبر على جهاز فعلي. أنشئ Archive ووزّعه عبر TestFlight أو App Store بعد التوقيع والمراجعة. لا يوجد رابط IPA عام أو TestFlight قبل إنشاء إصدار موقّع.
 
-بيئة العمل الحالية Linux ولا تحتوي JDK/Android SDK أو Xcode؛ لم يُنتج APK/AAB/IPA ولم تُختبر نسخة أصلية على جهاز. نجاح `cap sync` ليس نجاح بناء أصلي أو مراجعة متجر.
+### APK الاختباري
+
+تم تجهيز JDK 21 وAndroid SDK في بيئة Linux، ونجح `assembleDebug` فعليًا. ملف التسليم:
+
+`generated-artifacts/android/Prime-Boxing-Academy-1.0-debug.apk`
+
+الحزمة `com.primeboxingacademy.app`، إصدار `1.0`، وتتطلب Android 7.0 أو أحدث. تم التحقق من توقيع APK v2 ومن بنية الحزمة. هذا توقيع اختبار Android الافتراضي، وليس مفتاح إصدار مملوكًا للأكاديمية أو إصدار Google Play. لا تستعمل مفتاح الاختبار لتوزيع إنتاجي؛ تحديث التطبيق بمفتاح مختلف قد يتطلب إزالة النسخة الاختبارية أولًا.
+
+لإعادة البناء في هذه البيئة بعد تجهيز SDK:
+
+```bash
+export ANDROID_HOME="$PWD/.cache/android-sdk"
+pnpm --filter @workspace/club-manager run native:sync
+cd artifacts/club-manager/android
+./gradlew assembleDebug --no-daemon --max-workers=2
+```
+
+احتفظ بـSDK ومخرجات البناء خارج Git وصورة نشر الويب. نسخة APK الحالية هي بوابة المتصفح الآمن الموصوفة أعلاه، وليست تحويلًا مكتملًا لواجهات النادي إلى تطبيق مضمن. لم تُختبر على هاتف أو محاكي Android؛ يلزم اختبار التثبيت والفتح على الجهاز. لم يُنتج AAB موقّع للإنتاج أو IPA، ولا يتوفر Xcode في Linux.
 
 ## HTTPS والأمان
 

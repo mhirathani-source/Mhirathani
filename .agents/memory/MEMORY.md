@@ -3,3 +3,4 @@
 - [Financial access policy](financial-access-policy.md) — Only admins may see financial data anywhere; enforce on the server and preserve the owner's admin access.
 - [V2 demo boundary](v2-demo-boundary.md) — User chose an independent local-state demo; preserve the real system and keep demo roles and data isolated.
 - [Public mobile installation](mobile-install-policy.md) — Owner approved a public install page, not public access to club records or financial data.
+- [بيئة بناء Android](android-build-environment.md) — فهرس حزم النظام لا يضمن إتاحة سمات SDK؛ غياب السمة لا يمنع بناء APK بأدوات Google الرسمية.

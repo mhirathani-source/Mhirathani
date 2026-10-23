@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "GM3cU6nhO0hj-Z9wv1aC_"
+uri = "file://generated-artifacts/android/Prime-Boxing-Academy-1.0-debug.apk"
+type = "unspecified"
+title = "Prime Boxing Academy — Android APK"
+description = "APK اختباري موقّع، 4.2 MB، لأندرويد 7.0 أو أحدث. تم بناء الحزمة والتحقق من توقيعها؛ لم تُختبر على هاتف فعلي. النسخة الحالية بوابة تفتح نظام النادي في المتصفح الآمن، وليست نسخة Google Play."
+logical_id = "52ad0c5f-b532-4d90-9a3f-d14044bf01ec"
+content_hash = "sha256:9abb8319c1aa06c6bf0b489f013124da9c0d2868ea3cc48bf677a6ac4016c2cd"
+size = 4400490
+mtime_ms = 1792755658099
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/52ad0c5f-b532-4d90-9a3f-d14044bf01ec/d8b7fe5e-c5ac-4d1b-ad85-501c8a3f497a"
+storage_version_token = "1792755674251913"
+content_type = "application/octet-stream"

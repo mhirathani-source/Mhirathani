@@ -3,5 +3,7 @@
 
 # No need to store the pnpm store twice.
 .local
+.cache
+generated-artifacts
 artifacts/club-manager/android
 artifacts/club-manager/ios
