@@ -1,7 +1,6 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, check, foreignKey, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, check, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { rolesTable } from "./roles";
 import { z } from "zod/v4";
 
 export const clubUsersTable = pgTable(
@@ -20,7 +19,8 @@ export const clubUsersTable = pgTable(
   },
   (table) => [
     uniqueIndex("club_users_clerk_user_id_idx").on(table.clerkUserId),
-    foreignKey({name:"club_users_role_fk",columns:[table.role],foreignColumns:[rolesTable.name]}),
+    // Role assignments are validated under row locks in the owner API.
+    // A schema-only rollout cannot assume legacy production roles were seeded.
     check("club_users_status_check",sql`${table.status} in ('pending','active','rejected','suspended')`),
     check("club_users_owner_check",sql`NOT ${table.isOwner} OR (${table.role}='admin' AND ${table.status}='active')`),
   ],

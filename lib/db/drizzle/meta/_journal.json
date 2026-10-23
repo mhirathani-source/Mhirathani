@@ -43,6 +43,13 @@
       "when": 1792758726614,
       "tag": "0005_clear_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792762305744,
+      "tag": "0006_aberrant_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,9 @@ router.patch("/club/admin/users/:id", async (req, res) => {
   if (!parsed.success || !Object.keys(parsed.data).length) throw new MembershipError(400, "بيانات الحساب أو الصلاحيات غير صحيحة");
   const id = positiveId(req.params.id);
   const user = await db.transaction(async trx => {
+    // Serialize assignments and deletion, including when no database role FK
+    // exists during the legacy-to-role-catalog deployment.
+    await trx.execute(sql`SELECT pg_advisory_xact_lock(71926341)`);
     const [current] = await trx.select().from(clubUsersTable).where(eq(clubUsersTable.id, id)).for("update");
     if (!current) throw new MembershipError(404, "الحساب غير موجود");
     if (current.isOwner) throw new MembershipError(409, "حساب المدير الرئيسي محمي؛ لا يمكن تعطيله أو خفض صلاحياته");
@@ -90,6 +93,7 @@ router.patch("/club/admin/roles/:name", async (req, res) => {
 });
 router.delete("/club/admin/roles/:name", async (req, res) => {
   await db.transaction(async trx => {
+    await trx.execute(sql`SELECT pg_advisory_xact_lock(71926341)`);
     const [role] = await trx.select().from(rolesTable).where(eq(rolesTable.name, String(req.params.name))).for("update");
     if (!role) throw new MembershipError(404, "الدور غير موجود");
     if (role.builtIn) throw new MembershipError(409, "لا يمكن حذف دور أساسي؛ يمكن تعديل صلاحياته");

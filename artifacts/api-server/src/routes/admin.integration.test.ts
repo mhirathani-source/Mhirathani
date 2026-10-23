@@ -36,6 +36,9 @@ test("owner role CRUD and encrypted backup HTTP handlers use real PostgreSQL", {
     assert.equal((await call(`/roles/${name}`,"PATCH",{permissions:["members.view","reports.view"]})).status,200);
     const [fixture]=await db.insert(clubUsersTable).values({clerkUserId:`test:${name}`,email:`${name}@example.invalid`,role:name,status:"pending"}).returning();
     userId=fixture.id;
+    assert.equal((await call(`/users/${userId}`,"PATCH",{role:"missing_test_role"})).status,400);
+    const [unchanged]=await db.select().from(clubUsersTable).where(eq(clubUsersTable.id,userId));
+    assert.equal(unchanged.role,name);
     assert.equal((await call(`/roles/${name}`,"DELETE")).status,409);
     await db.delete(clubUsersTable).where(eq(clubUsersTable.id,userId));userId=undefined;
     assert.equal((await call(`/roles/${name}`,"DELETE")).status,204);

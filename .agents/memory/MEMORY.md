@@ -4,3 +4,4 @@
 - [V2 demo boundary](v2-demo-boundary.md) — User chose an independent local-state demo; preserve the real system and keep demo roles and data isolated.
 - [Public mobile installation](mobile-install-policy.md) — Owner approved a public install page, not public access to club records or financial data.
 - [بيئة بناء Android](android-build-environment.md) — فهرس حزم النظام لا يضمن إتاحة سمات SDK؛ غياب السمة لا يمنع بناء APK بأدوات Google الرسمية.
+- [Publish role rollout](publish-schema-role-seeding.md) — Publish applies schema before role seeding; preserve legacy access without startup DDL.
