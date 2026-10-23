@@ -36,6 +36,7 @@ import type {
   FinanceTransaction,
   FinanceTransactionInput,
   FinanceTransactionUpdate,
+  GetClubOverview200,
   GetFinancePeriodReportParams,
   GetFinanceReportParams,
   HealthStatus,
@@ -96,6 +97,160 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetClubOverviewUrl = () => {
+
+
+
+
+  return `/api/club/overview`
+}
+
+/**
+ * @summary Non-financial operational overview for club staff
+ */
+export const getClubOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetClubOverview200> => {
+
+  return customFetch<GetClubOverview200>(getGetClubOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetClubOverviewQueryKey = () => {
+    return [
+    `/api/club/overview`
+    ] as const;
+    }
+
+
+export const getGetClubOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getClubOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClubOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetClubOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClubOverview>>> = ({ signal }) => getClubOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getClubOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetClubOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getClubOverview>>>
+export type GetClubOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Non-financial operational overview for club staff
+ */
+
+export function useGetClubOverview<TData = Awaited<ReturnType<typeof getClubOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClubOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetClubOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMemberProfileUrl = (id: number,) => {
+
+
+
+
+  return `/api/members/${id}/profile`
+}
+
+/**
+ * @summary Basic member profile without subscriptions or financial history
+ */
+export const getMemberProfile = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
+
+  return customFetch<Member>(getGetMemberProfileUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMemberProfileQueryKey = (id: number,) => {
+    return [
+    `/api/members/${id}/profile`
+    ] as const;
+    }
+
+
+export const getGetMemberProfileQueryOptions = <TData = Awaited<ReturnType<typeof getMemberProfile>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMemberProfileQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberProfile>>> = ({ signal }) => getMemberProfile(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMemberProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getMemberProfile>>>
+export type GetMemberProfileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Basic member profile without subscriptions or financial history
+ */
+
+export function useGetMemberProfile<TData = Awaited<ReturnType<typeof getMemberProfile>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMemberProfileQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

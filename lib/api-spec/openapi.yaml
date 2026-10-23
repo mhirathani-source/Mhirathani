@@ -21,6 +21,39 @@ tags:
   - name: finance
     description: Finance, cash, payroll, and reporting operations
 paths:
+  /club/overview:
+    get:
+      operationId: getClubOverview
+      summary: Non-financial operational overview for club staff
+      responses:
+        "200":
+          description: Counts only; no financial data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [activeMembers, endingSoon, expiredSubscriptions]
+                properties:
+                  activeMembers: { type: integer }
+                  endingSoon: { type: integer }
+                  expiredSubscriptions: { type: integer }
+  /members/{id}/profile:
+    get:
+      operationId: getMemberProfile
+      summary: Basic member profile without subscriptions or financial history
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Basic member data only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "404":
+          description: Member not found
   /healthz:
     get:
       operationId: healthCheck

@@ -792,6 +792,12 @@ export interface CashRegister {
   movements: RegisterCashMovement[];
 }
 
+export type GetClubOverview200 = {
+  activeMembers: number;
+  endingSoon: number;
+  expiredSubscriptions: number;
+};
+
 export type ListMembersParams = {
 search?: string;
 /**

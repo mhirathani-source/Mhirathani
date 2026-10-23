@@ -136,7 +136,7 @@ export function MembersPage() {
             <td><span className={`status-pill ${m.active ? "success" : "muted"}`}>{m.active ? "مفعّل" : "مؤرشف"}</span></td>
             <td className="row-actions"><button className="mini-button" onClick={() => { setForm(m); setMsg(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>تعديل</button>
               <ArchiveToggle mini member={m} onError={setErr} onDone={s => { setErr(""); setMsg(s); }} />
-              <Link href={`/subscriptions?memberId=${m.id}`} className="mini-button">اشتراك</Link>
+              {isAdmin && <Link href={`/subscriptions?memberId=${m.id}`} className="mini-button">اشتراك</Link>}
               {isAdmin && <button className="mini-button mship-danger-mini" onClick={() => setDel(m)}>حذف</button>}</td></tr>)}
         </tbody></table></div>
         : <div className="empty-state"><p>{search ? "لا توجد نتائج مطابقة." : "لا يوجد مشتركون بعد. سجّل أول مشترك للنادي."}</p></div>}

@@ -1,2 +1,3 @@
 - [مواعيد التذكيرات](reminder-requirements.md) — تذكير قبل الانتهاء بيومين ويوم الانتهاء؛ هذه المواعيد تحل محل المواعيد السابقة.
 - [تاريخ المشترك المالي](member-history-policy.md) — سياسة المستخدم: الحفاظ على المدفوعات والديون والسجلات المرتبطة، وتقديم الأرشفة بدل الحذف غير الآمن.
+- [Financial access policy](financial-access-policy.md) — Only admins may see financial data anywhere; enforce on the server and preserve the owner's admin access.

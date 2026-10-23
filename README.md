@@ -47,6 +47,7 @@
 
 - [متغيرات البيئة](docs/ENVIRONMENT.md)
 - [إدارة المشتركين والاشتراكات والحذف الآمن](docs/MEMBERSHIPS.md)
+- [صلاحيات المدير والموظف وحماية البيانات المالية](docs/SECURITY_RBAC.md)
 - مخطط البيانات: `lib/db/src/schema/`
 - عقد API: `lib/api-spec/openapi.yaml`
 - واجهة الويب: `artifacts/club-manager/`

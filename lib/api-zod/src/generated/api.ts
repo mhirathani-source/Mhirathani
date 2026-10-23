@@ -9,6 +9,41 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Non-financial operational overview for club staff
+ */
+export const GetClubOverviewResponse = zod.object({
+  "activeMembers": zod.number().int(),
+  "endingSoon": zod.number().int(),
+  "expiredSubscriptions": zod.number().int()
+})
+
+
+/**
+ * @summary Basic member profile without subscriptions or financial history
+ */
+
+
+
+export const GetMemberProfileParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const getMemberProfileResponseBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetMemberProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(getMemberProfileResponseBirthDateRegExp).nullish(),
+  "notes": zod.string().nullish(),
+  "joinedAt": zod.coerce.date(),
+  "active": zod.boolean()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

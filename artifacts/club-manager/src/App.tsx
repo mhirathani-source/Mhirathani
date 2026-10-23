@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { arSA } from "@clerk/localizations";
@@ -16,8 +16,8 @@ import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { MembersPage, SubscriptionsPage, SubscriptionManager, MemberProfileTools } from "./MembershipPages";
 import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
+import { StaffDashboard, StaffMemberDetail } from "./StaffPages";
 
-const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -53,7 +53,7 @@ function AuthPages() {
   return <div className="auth-page" dir="rtl"><div className="auth-brand"><span className="brand-mark-placeholder" aria-label="مكان شعار الأكاديمية">P</span><span>Prime Boxing Academy</span></div><Switch><Route path="/sign-in/*?"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></Route><Route path="/sign-up/*?"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></Route></Switch></div>;
 }
 
-const navItems = [
+const allNavItems = [
   { href: "/dashboard", title: "لوحة التحكم", icon: LayoutDashboard },
   { href: "/members", title: "المشتركون", icon: Users },
   { href: "/subscriptions", title: "الاشتراكات", icon: BadgeCheck },
@@ -67,17 +67,38 @@ function AppShell({ children }: { children: ReactNode }) {
   const { user } = useUser();
   const { signOut } = useClerk();
   const [location] = useLocation();
+  const session = useGetClubSession();
+  const navItems = allNavItems.filter(item => !session.isError && session.data?.role === "admin" || ["/dashboard", "/members"].includes(item.href));
   return <div className="app-shell" dir="rtl"><aside className="sidebar"><Link href="/dashboard" className="brand"><span className="brand-mark-placeholder">P</span><span>Prime Boxing Academy<small>إدارة الأكاديمية</small></span></Link><p className="nav-label">القائمة الرئيسية</p><nav>{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={`nav-link ${location===href?"active":""}`}><Icon size={18}/>{title}</Link>)}</nav><div className="sidebar-bottom"><div className="profile"><div className="avatar">{user?.firstName?.slice(0,1)||"م"}</div><div><strong>{user?.fullName||"مدير الأكاديمية"}</strong><small>{user?.primaryEmailAddress?.emailAddress}</small></div></div><button className="nav-link logout" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/>تسجيل الخروج</button></div></aside><main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">Prime Boxing Academy</span></div><div className="topbar-user">بوابة إدارة الأكاديمية</div></header><section className="page-content">{children}</section></main><nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav></div>;
 }
 
-function Protected({ children }: { children: ReactNode }) {
+function Protected({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
   const { isLoaded, isSignedIn } = useUser();
-  const session = useGetClubSession({ query: { enabled: !!isSignedIn, queryKey: getGetClubSessionQueryKey() } });
+  const session = useGetClubSession({ query: { enabled: !!isSignedIn, queryKey: getGetClubSessionQueryKey(), staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true, refetchInterval: 10000, retry: false } });
+  const cache = useQueryClient();
+  const previousRole = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const role = session.data?.role;
+    if (previousRole.current !== undefined && previousRole.current !== role) {
+      const filters = { predicate: (query: { queryKey: readonly unknown[] }) => {
+        const path = String(query.queryKey[0]).replace(/^\/api/, "");
+        return !/^\/(?:club\/(?:session|overview)|members(?:\/[1-9]\d*\/profile)?)$/.test(path);
+      } };
+      void cache.cancelQueries(filters).then(() => cache.removeQueries(filters));
+      cache.getMutationCache().clear();
+    }
+    previousRole.current = role;
+  }, [session.data?.role, cache]);
   if (!isLoaded || (isSignedIn && session.isLoading)) return <div className="center"><span className="spinner"/> جارٍ التحقق من صلاحية الحساب…</div>;
   if (!isSignedIn) return <Redirect to="/"/>;
+  if (session.isError) return <AppShell><div className="error-panel">تعذر التحقق من صلاحيات الحساب. أعد تحميل الصفحة.</div></AppShell>;
   if (session.data?.setupRequired || !session.data?.role) return <AppShell><div className="setup-card"><div className="setup-icon"><Wallet/></div><h1>إعداد مدير النادي</h1><p>تم تسجيل الدخول، لكن لم يُعيّن مدير للنادي بعد. حماية البيانات مفعّلة ولن يتمكن أي حساب آخر من عرضها قبل إتمام إعداد المدير الأول.</p><p className="muted">يرجى إكمال إعداد المدير من مالك التطبيق ثم إعادة تحميل الصفحة.</p></div></AppShell>;
+  if (adminOnly && session.data.role !== "admin") return <AppShell><div className="error-panel" role="alert"><h1>ليس لديك صلاحية - Access Denied</h1><p>هذه الصفحة متاحة للمدير فقط.</p><Link href="/dashboard" className="button primary">العودة للوحة التحكم</Link></div></AppShell>;
   return <AppShell>{children}</AppShell>;
 }
+
+function RoleDashboard() { return useGetClubSession().data?.role === "admin" ? <Dashboard/> : <StaffDashboard/>; }
+function RoleMemberDetail() { return useGetClubSession().data?.role === "admin" ? <MemberDetail/> : <StaffMemberDetail/>; }
 
 function PageHeading({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>{children}</div>;
@@ -204,17 +225,27 @@ function ReceiptPage() {
 function MainRouter() {
   const [,setLocation]=useLocation();
   return <Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={AuthPages}/><Route path="/sign-up/*?" component={AuthPages}/>
-    <Route path="/dashboard"><Protected><Dashboard/></Protected></Route>
+    <Route path="/dashboard"><Protected><RoleDashboard/></Protected></Route>
     <Route path="/members"><Protected><Members/></Protected></Route>
-    <Route path="/members/:id"><Protected><MemberDetail/></Protected></Route>
-    <Route path="/plans"><Protected><Plans/></Protected></Route>
-    <Route path="/subscriptions"><Protected><Subscriptions/></Protected></Route>
-    <Route path="/finance"><Protected><FinanceManagementPage/></Protected></Route>
-    <Route path="/settings/whatsapp"><Protected><WhatsAppSettingsPage/></Protected></Route>
-    <Route path="/reports"><Protected><ReportsPage/></Protected></Route>
-    <Route path="/receipt/:id"><Protected><ReceiptPage/></Protected></Route>
+    <Route path="/members/:id"><Protected><RoleMemberDetail/></Protected></Route>
+    <Route path="/plans"><Protected adminOnly><Plans/></Protected></Route>
+    <Route path="/subscriptions"><Protected adminOnly><Subscriptions/></Protected></Route>
+    <Route path="/finance"><Protected adminOnly><FinanceManagementPage/></Protected></Route>
+    <Route path="/settings/whatsapp"><Protected adminOnly><WhatsAppSettingsPage/></Protected></Route>
+    <Route path="/reports"><Protected adminOnly><ReportsPage/></Protected></Route>
+    <Route path="/receipt/:id"><Protected adminOnly><ReceiptPage/></Protected></Route>
     <Route><div className="panel"><Empty text="الصفحة غير موجودة."/><button className="button primary" onClick={()=>setLocation("/dashboard")}>العودة للوحة التحكم</button></div></Route>
   </Switch>;
+}
+
+function IdentityQueries() {
+  const { user } = useUser();
+  return <ScopedQueries key={user?.id ?? "signed-out"}/>;
+}
+function ScopedQueries() {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  useEffect(() => () => { void client.cancelQueries(); client.clear(); }, [client]);
+  return <QueryClientProvider client={client}><MainRouter/></QueryClientProvider>;
 }
 
 function ClerkApp() {
@@ -222,7 +253,7 @@ function ClerkApp() {
   return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}
     localization={{ ...arSA, formFieldInputPlaceholder__emailAddress: "أدخل بريدك الإلكتروني", formFieldInputPlaceholder__emailAddress_username: "أدخل بريدك الإلكتروني" }}
     routerPush={(to)=>setLocation(stripBase(to))} routerReplace={(to)=>setLocation(stripBase(to),{replace:true})}>
-    <QueryClientProvider client={queryClient}><Show when="signed-out"><MainRouter/></Show><Show when="signed-in"><MainRouter/></Show></QueryClientProvider>
+    <IdentityQueries/>
   </ClerkProvider>;
 }
 

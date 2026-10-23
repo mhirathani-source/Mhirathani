@@ -1,7 +1,15 @@
 import { getAuth } from "@clerk/express";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import { db, clubUsersTable } from "@workspace/db";
+import { grantConfiguredOwner } from "../lib/ownerRole";
+
+export async function resolveClubUser(userId: string) {
+  const [existing] = await db.select().from(clubUsersTable).where(eq(clubUsersTable.clerkUserId, userId)).limit(1);
+  if (existing || !process.env.CLUB_ADMIN_EMAIL) return existing;
+  const { clerkClient } = await import("@clerk/express");
+  return grantConfiguredOwner(await clerkClient.users.getUser(userId));
+}
 
 declare global {
   namespace Express {
@@ -22,33 +30,7 @@ export async function requireClubUser(
     return;
   }
 
-  let [clubUser] = await db
-    .select()
-    .from(clubUsersTable)
-    .where(eq(clubUsersTable.clerkUserId, userId))
-    .limit(1);
-
-  if (!clubUser && process.env.CLUB_ADMIN_EMAIL) {
-    const { clerkClient } = await import("@clerk/express");
-    const identity = await clerkClient.users.getUser(userId);
-    const email = identity.emailAddresses.find(
-      (item) => item.id === identity.primaryEmailAddressId,
-    )?.emailAddress;
-    if (email?.trim().toLowerCase() === process.env.CLUB_ADMIN_EMAIL.trim().toLowerCase()) {
-      [clubUser] = await db
-        .insert(clubUsersTable)
-        .values({ clerkUserId: userId, email, role: "admin" })
-        .onConflictDoNothing()
-        .returning();
-      if (!clubUser) {
-        [clubUser] = await db
-          .select()
-          .from(clubUsersTable)
-          .where(and(eq(clubUsersTable.clerkUserId, userId), eq(clubUsersTable.role, "admin")))
-          .limit(1);
-      }
-    }
-  }
+  const clubUser = await resolveClubUser(userId);
 
   if (!clubUser || !["admin", "staff"].includes(clubUser.role)) {
     res.status(403).json({ error: "هذا الحساب غير مخوّل لإدارة النادي", setupRequired: !process.env.CLUB_ADMIN_EMAIL });

@@ -35,6 +35,7 @@ export * from './financeTransactionMethod';
 export * from './financeTransactionUpdate';
 export * from './financeTransactionUpdateKind';
 export * from './financeTransactionUpdateMethod';
+export * from './getClubOverview200';
 export * from './getFinancePeriodReportParams';
 export * from './getFinancePeriodReportPeriod';
 export * from './getFinanceReportParams';

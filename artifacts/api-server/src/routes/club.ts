@@ -46,7 +46,8 @@ import {
 import { db, auditLogTable, cashMovementsTable, clubUsersTable, employeesTable, financeCategoriesTable, financialTransactionsTable, membersTable, payrollEntriesTable, paymentsTable, plansTable, subscriptionsTable } from "@workspace/db";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { requireClubUser, requireAdmin } from "../middlewares/clubAuth";
+import { requireClubUser, requireAdmin, resolveClubUser } from "../middlewares/clubAuth";
+import { GetClubOverviewResponse, GetMemberProfileParams, GetMemberProfileResponse } from "@workspace/api-zod";
 import { addSubscriptionPayment as addPayment, deleteUnlinkedMember, startSubscription, correctSubscription, subscriptionAction, MembershipError, membershipErrorHandler, normalizedMemberBody, validCalendarDate } from "../lib/membership";
 
 const router: IRouter = Router();
@@ -101,17 +102,34 @@ router.get("/club/session", async (req, res): Promise<void> => {
   }
   const identity = await clerkClient.users.getUser(userId);
   const email = identity.emailAddresses.find((item) => item.id === identity.primaryEmailAddressId)?.emailAddress ?? "";
-  let [user] = await db.select().from(clubUsersTable).where(eq(clubUsersTable.clerkUserId, userId)).limit(1);
-  if (!user && process.env.CLUB_ADMIN_EMAIL && email.toLowerCase() === process.env.CLUB_ADMIN_EMAIL.trim().toLowerCase()) {
-    [user] = await db.insert(clubUsersTable).values({ clerkUserId: userId, email, role: "admin" }).onConflictDoNothing().returning();
-    if (!user) [user] = await db.select().from(clubUsersTable).where(eq(clubUsersTable.clerkUserId, userId)).limit(1);
-  }
+  const user = await resolveClubUser(userId);
   res.json(GetClubSessionResponse.parse({
     userId,
     email,
     role: user?.role === "admin" || user?.role === "staff" ? user.role : null,
     setupRequired: !process.env.CLUB_ADMIN_EMAIL,
   }));
+});
+
+router.get("/club/overview", requireClubUser, async (_req, res): Promise<void> => {
+  const today = jordanDate();
+  const soon = addDays(today, 2);
+  const members = await db.select({ id: membersTable.id, active: membersTable.active }).from(membersTable);
+  const subscriptions = await db.select({ memberId: subscriptionsTable.memberId, endDate: subscriptionsTable.endDate, status: subscriptionsTable.status }).from(subscriptionsTable);
+  const active = subscriptions.filter(s => s.status === "active" && s.endDate >= today);
+  res.json(GetClubOverviewResponse.parse({
+    activeMembers: new Set(active.filter(s => members.some(m => m.id === s.memberId && m.active)).map(s => s.memberId)).size,
+    endingSoon: active.filter(s => s.endDate <= soon).length,
+    expiredSubscriptions: subscriptions.filter(s => s.status === "expired" || (s.status === "active" && s.endDate < today)).length,
+  }));
+});
+
+router.get("/members/:id/profile", requireClubUser, async (req, res): Promise<void> => {
+  const params = GetMemberProfileParams.safeParse(req.params);
+  if (!params.success || !Number.isSafeInteger(params.data.id)) { res.status(400).json({ error: "معرّف المشترك غير صالح" }); return; }
+  const [member] = await db.select().from(membersTable).where(eq(membersTable.id, params.data.id)).limit(1);
+  if (!member) { res.status(404).json({ error: "المشترك غير موجود" }); return; }
+  res.json(GetMemberProfileResponse.parse({ ...member, joinedAt: member.joinedAt.toISOString() }));
 });
 
 router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> => {
