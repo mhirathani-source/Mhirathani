@@ -135,7 +135,7 @@ router.get("/club/session", async (req, res): Promise<void> => {
 
 router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> => {
   const today = jordanDate();
-  const soon = addDays(today, 7);
+  const soon = addDays(today, 2);
   const members = await db.select().from(membersTable);
   const subscriptions = await db.select().from(subscriptionsTable).where(sql`${subscriptionsTable.status} <> 'cancelled'`);
   const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.kind, "payment"));

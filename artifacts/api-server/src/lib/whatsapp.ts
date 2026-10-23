@@ -1,6 +1,5 @@
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { and, eq, inArray } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import { db, membersTable, plansTable, subscriptionsTable, systemSettingsTable, whatsappReminderLogsTable, whatsappTemplatesTable } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -49,7 +48,7 @@ export async function ensureDefaultWhatsAppTemplates() {
   }
 }
 
-async function graph(path: string, init: RequestInit = {}) {
+async function graph(path: string, init: {method?:string;headers?:Record<string,string>;body?:unknown} = {}) {
   const response = await connectors.proxy("whatsapp-business", `/${GRAPH_VERSION}${path}`, init);
   const body = await response.json().catch(() => ({})) as Record<string, any>;
   if (!response.ok) {
@@ -87,7 +86,7 @@ export async function createProviderTemplate(key: string, body: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: definition.name, language: "ar", category: "UTILITY",
-      components: [{ type: "BODY", text: body }],
+      components: [{ type: "BODY", text: body, example: { body_text: [["اسم المشترك", "اسم الباقة", "2026-12-31"]] } }],
     }),
   });
   await db.insert(whatsappTemplatesTable).values({
@@ -124,7 +123,7 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: "2" 
   }
   let phone: string;
   try { phone = jordanPhone(member.phone); } catch (error) { return { ok: false as const, reason: error instanceof Error ? error.message : "رقم الهاتف غير صالح" }; }
-  const triggerKey = trigger === "manual" ? `manual:${randomUUID()}` : trigger;
+  const triggerKey = trigger === "manual" ? `manual:${new Date().toISOString().slice(0,16)}` : trigger;
   const [log] = await db.insert(whatsappReminderLogsTable).values({
     memberId: member.id, subscriptionId, templateId: template.id, triggerDays: triggerKey, status: "queued",
   }).onConflictDoNothing().returning();
@@ -145,7 +144,8 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: "2" 
         },
       }),
     });
-    const messageId = result.messages?.[0]?.id ?? null;
+    const messageId = result.messages?.[0]?.id;
+    if (typeof messageId !== "string") throw new Error("لم تُرجع Meta معرّف رسالة يؤكد قبول الطلب");
     await db.update(whatsappReminderLogsTable).set({ status: "accepted", providerMessageId: messageId }).where(eq(whatsappReminderLogsTable.id, log.id));
     return { ok: true as const, logId: log.id, providerMessageId: messageId };
   } catch (error) {
