@@ -15,6 +15,13 @@
       "when": 1792707852689,
       "tag": "0001_solid_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792726547880,
+      "tag": "0002_handy_silhouette",
+      "breakpoints": true
     }
   ]
 }

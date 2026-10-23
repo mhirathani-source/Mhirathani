@@ -9,7 +9,8 @@ import type { SubscriptionActionAction } from './subscriptionActionAction';
 
 export interface SubscriptionAction {
   action: SubscriptionActionAction;
-  startDate?: Date;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate?: string;
   /** @minimum 1 */
   planId?: number;
 }

@@ -50,6 +50,7 @@ import type {
   ManagedPayrollEntry,
   ManagedPayrollInput,
   Member,
+  MemberDeleteConflict,
   MemberDetail,
   MemberInput,
   MemberUpdate,
@@ -65,7 +66,8 @@ import type {
   RegisterCashMovement,
   Subscription,
   SubscriptionAction,
-  SubscriptionInput
+  SubscriptionInput,
+  SubscriptionUpdate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -497,6 +499,80 @@ export const useCreateMember = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateMemberMutationOptions(options));
+    }
+
+export const getDeleteMemberUrl = (id: number,) => {
+
+
+
+
+  return `/api/members/${id}`
+}
+
+/**
+ * @summary Permanently delete an unlinked member (admin only)
+ */
+export const deleteMember = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMemberUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMemberMutationKey = () => ['deleteMember'] as const;
+
+export const getDeleteMemberMutationOptions = <TError = ErrorType<void | MemberDeleteConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMember>>, TError,DeleteMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMember>>, TError,DeleteMemberMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMember>>, DeleteMemberMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMember(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMemberMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMember>>>
+
+    export type DeleteMemberMutationError = ErrorType<void | MemberDeleteConflict>
+    export type DeleteMemberMutationVariables = {id: number}
+
+    /**
+ * @summary Permanently delete an unlinked member (admin only)
+ */
+export const useDeleteMember = <TError = ErrorType<void | MemberDeleteConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMember>>, TError,DeleteMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMember>>,
+        TError,
+        DeleteMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMemberMutationOptions(options));
     }
 
 export const getGetMemberUrl = (id: number,) => {
@@ -1089,6 +1165,95 @@ export const useCreateSubscription = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateSubscriptionMutationOptions(options));
+    }
+
+export const getUpdateSubscriptionUrl = (id: number,) => {
+
+
+
+
+  return `/api/subscriptions/${id}`
+}
+
+/**
+ * @summary Correct a current subscription without changing its payments (admin only)
+ */
+export const updateSubscription = async (id: number,
+    subscriptionUpdate: SubscriptionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Subscription>(getUpdateSubscriptionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(subscriptionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateSubscriptionMutationKey = () => ['updateSubscription'] as const;
+
+export const getUpdateSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSubscription>>, UpdateSubscriptionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSubscription(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSubscription>>>
+    export type UpdateSubscriptionMutationBody = BodyType<SubscriptionUpdate>
+    export type UpdateSubscriptionMutationError = ErrorType<void>
+    export type UpdateSubscriptionMutationVariables = {id: number;data: BodyType<SubscriptionUpdate>}
+
+    /**
+ * @summary Correct a current subscription without changing its payments (admin only)
+ */
+export const useUpdateSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSubscription>>,
+        TError,
+        UpdateSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSubscriptionMutationOptions(options));
     }
 
 export const getActOnSubscriptionUrl = (id: number,) => {

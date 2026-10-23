@@ -12,6 +12,11 @@ export interface Member {
   phone: string;
   /** @nullable */
   email?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  birthDate?: string | null;
   /** @nullable */
   notes?: string | null;
   joinedAt: Date;

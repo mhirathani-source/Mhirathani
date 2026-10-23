@@ -46,6 +46,7 @@
 ## الملفات المرجعية
 
 - [متغيرات البيئة](docs/ENVIRONMENT.md)
+- [إدارة المشتركين والاشتراكات والحذف الآمن](docs/MEMBERSHIPS.md)
 - مخطط البيانات: `lib/db/src/schema/`
 - عقد API: `lib/api-spec/openapi.yaml`
 - واجهة الويب: `artifacts/club-manager/`

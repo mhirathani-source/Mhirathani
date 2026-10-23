@@ -38,11 +38,16 @@ import {
   UpdatePlanBody,
   UpdatePlanParams,
   UpdatePlanResponse,
+  DeleteMemberParams,
+  UpdateSubscriptionParams,
+  UpdateSubscriptionBody,
+  UpdateSubscriptionResponse,
 } from "@workspace/api-zod";
 import { db, auditLogTable, cashMovementsTable, clubUsersTable, employeesTable, financeCategoriesTable, financialTransactionsTable, membersTable, payrollEntriesTable, paymentsTable, plansTable, subscriptionsTable } from "@workspace/db";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { requireClubUser } from "../middlewares/clubAuth";
+import { requireClubUser, requireAdmin } from "../middlewares/clubAuth";
+import { addSubscriptionPayment as addPayment, deleteUnlinkedMember, startSubscription, correctSubscription, subscriptionAction, MembershipError, membershipErrorHandler, normalizedMemberBody, validCalendarDate } from "../lib/membership";
 
 const router: IRouter = Router();
 const JORDAN_TIME_ZONE = "Asia/Amman";
@@ -71,11 +76,6 @@ function effectiveStatus(subscription: typeof subscriptionsTable.$inferSelect) {
   return subscription.endDate < jordanDate() ? "expired" : "active";
 }
 
-function receiptNumber(): string {
-  const time = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  return `N-${time}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-}
-
 async function audit(actorId: string, action: string, entityType: string, entityId: number | null, details: Record<string, unknown> = {}) {
   await db.insert(auditLogTable).values({ actorId, action, entityType, entityId, details });
 }
@@ -87,29 +87,10 @@ async function subscriptionView(row: typeof subscriptionsTable.$inferSelect) {
   const paidFils = paymentRows.reduce((total, payment) => total + (payment.kind === "refund" ? -payment.amountFils : payment.kind === "payment" ? payment.amountFils : 0), 0);
   return {
     id: row.id, memberId: row.memberId, memberName: member?.name ?? "", planId: row.planId,
-    planName: plan?.name ?? "", priceFils: row.priceFils, paidFils,
+    planName: plan?.name ?? "", priceFils: row.priceFils, discountFils: row.discountFils, renewedFromId: row.renewedFromId, paidFils,
     balanceFils: Math.max(0, row.priceFils - row.discountFils - paidFils),
     startDate: row.startDate, endDate: row.endDate, status: effectiveStatus(row), createdAt: row.createdAt.toISOString(),
   };
-}
-
-async function addPayment(
-  trx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  subscriptionId: number,
-  amountFils: number,
-  method: string,
-  createdBy: string,
-  note: string | null = null,
-  kind = "payment",
-) {
-  const [payment] = await trx.insert(paymentsTable).values({
-    subscriptionId, amountFils, method, createdBy, note, kind, receiptNumber: receiptNumber(),
-  }).returning();
-  if (method === "cash" && (kind === "payment" || kind === "refund")) await trx.insert(cashMovementsTable).values({
-    direction: kind === "payment" ? "in" : "out", amountFils, description: `اشتراك #${subscriptionId}`,
-    referenceType: "subscription_payment", referenceId: payment.id, createdBy,
-  });
-  return payment;
 }
 
 router.get("/club/session", async (req, res): Promise<void> => {
@@ -137,7 +118,7 @@ router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> 
   const today = jordanDate();
   const soon = addDays(today, 2);
   const members = await db.select().from(membersTable);
-  const subscriptions = await db.select().from(subscriptionsTable).where(sql`${subscriptionsTable.status} <> 'cancelled'`);
+  const subscriptions = await db.select().from(subscriptionsTable);
   const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.kind, "payment"));
   const expenses = 0;
   const activeMembers = new Set(subscriptions.filter((s) => effectiveStatus(s) === "active" && members.some((m) => m.id === s.memberId && m.active)).map((s) => s.memberId)).size;
@@ -165,17 +146,19 @@ router.get("/members", requireClubUser, async (req, res): Promise<void> => {
 });
 
 router.post("/members", requireClubUser, async (req, res): Promise<void> => {
-  const body = CreateMemberBody.safeParse(req.body);
-  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
-  const phone = body.data.phone.replace(/[()\s-]/g, "");
-  const [row] = await db.insert(membersTable).values({ ...body.data, phone }).returning();
-  await audit(req.clubUser!.clerkUserId, "member.created", "member", row.id);
+  const body = CreateMemberBody.safeParse(normalizedMemberBody(req.body ?? {}));
+  if (!body.success) { res.status(400).json({ error: "تحقق من الاسم ورقم الهاتف والبريد الإلكتروني وتاريخ الميلاد" }); return; }
+  const row = await db.transaction(async (trx) => {
+    const [created] = await trx.insert(membersTable).values({ ...body.data, birthDate: body.data.birthDate ? dateOnly(body.data.birthDate) : null }).returning();
+    await trx.insert(auditLogTable).values({ actorId: req.clubUser!.clerkUserId, action: "member.created", entityType: "member", entityId: created.id });
+    return created;
+  });
   res.status(201).json(CreateMemberResponse.parse({ ...row, joinedAt: row.joinedAt.toISOString() }));
 });
 
 router.get("/members/:id", requireClubUser, async (req, res): Promise<void> => {
   const params = GetMemberParams.safeParse(req.params);
-  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1) { res.status(400).json({ error: "معرّف المشترك غير صالح" }); return; }
   const [member] = await db.select().from(membersTable).where(eq(membersTable.id, params.data.id)).limit(1);
   if (!member) { res.status(404).json({ error: "المشترك غير موجود" }); return; }
   const subscriptions = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.memberId, member.id)).orderBy(desc(subscriptionsTable.createdAt));
@@ -192,13 +175,24 @@ router.get("/members/:id", requireClubUser, async (req, res): Promise<void> => {
 
 router.patch("/members/:id", requireClubUser, async (req, res): Promise<void> => {
   const params = UpdateMemberParams.safeParse(req.params);
-  const body = UpdateMemberBody.safeParse(req.body);
-  if (!params.success || !body.success) { res.status(400).json({ error: "بيانات التعديل غير صحيحة" }); return; }
-  const values = { ...body.data, ...(body.data.phone ? { phone: body.data.phone.replace(/[()\s-]/g, "") } : {}) };
-  const [row] = await db.update(membersTable).set(values).where(eq(membersTable.id, params.data.id)).returning();
-  if (!row) { res.status(404).json({ error: "المشترك غير موجود" }); return; }
-  await audit(req.clubUser!.clerkUserId, "member.updated", "member", row.id);
+  const body = UpdateMemberBody.safeParse(normalizedMemberBody(req.body ?? {}));
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success || !Object.keys(body.data).length) { res.status(400).json({ error: "بيانات التعديل أو معرّف المشترك غير صحيح؛ تحقق من الحقول المطلوبة" }); return; }
+  const values = { ...body.data, ...(body.data.birthDate !== undefined ? { birthDate: body.data.birthDate ? dateOnly(body.data.birthDate) : null } : {}) };
+  const row = await db.transaction(async (trx) => {
+    const [before] = await trx.select().from(membersTable).where(eq(membersTable.id, params.data.id)).for("update");
+    if (!before) throw new MembershipError(404, "المشترك غير موجود");
+    const [updated] = await trx.update(membersTable).set(values).where(eq(membersTable.id, params.data.id)).returning();
+    await trx.insert(auditLogTable).values({ actorId: req.clubUser!.clerkUserId, action: "member.updated", entityType: "member", entityId: updated.id, details: { fields: Object.keys(body.data), activeBefore: before.active, activeAfter: updated.active } });
+    return updated;
+  });
   res.json(UpdateMemberResponse.parse({ ...row, joinedAt: row.joinedAt.toISOString() }));
+});
+
+router.delete("/members/:id", requireClubUser, requireAdmin, async (req, res): Promise<void> => {
+  const params = DeleteMemberParams.safeParse(req.params);
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1) { res.status(400).json({ error: "معرّف المشترك غير صالح" }); return; }
+  await deleteUnlinkedMember(params.data.id, req.clubUser!.clerkUserId);
+  res.sendStatus(204);
 });
 
 router.get("/plans", requireClubUser, async (_req, res): Promise<void> => {
@@ -238,72 +232,28 @@ router.get("/subscriptions", requireClubUser, async (req, res): Promise<void> =>
 });
 
 router.post("/subscriptions", requireClubUser, async (req, res): Promise<void> => {
+  if (!validCalendarDate(req.body?.startDate)) { res.status(400).json({ error: "تاريخ بداية الاشتراك غير صالح" }); return; }
   const body = CreateSubscriptionBody.safeParse(req.body);
-  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
-  const [member] = await db.select().from(membersTable).where(eq(membersTable.id, body.data.memberId)).limit(1);
-  const [plan] = await db.select().from(plansTable).where(and(eq(plansTable.id, body.data.planId), eq(plansTable.active, true))).limit(1);
-  if (!member || !plan) { res.status(404).json({ error: "المشترك أو الباقة غير موجودة أو غير مفعّلة" }); return; }
-  if (body.data.discountFils > plan.priceFils) { res.status(400).json({ error: "الخصم أكبر من سعر الباقة" }); return; }
-  if ((body.data.initialPaymentFils ?? 0) > plan.priceFils - (body.data.discountFils ?? 0)) { res.status(400).json({ error: "المبلغ المدفوع أكبر من المستحق" }); return; }
-  const created = await db.transaction(async (trx) => {
-    const [subscription] = await trx.insert(subscriptionsTable).values({
-      memberId: member.id, planId: plan.id, priceFils: plan.priceFils,
-      discountFils: body.data.discountFils ?? 0,
-      startDate: dateOnly(body.data.startDate),
-      endDate: addDays(dateOnly(body.data.startDate), plan.durationDays - 1),
-    }).returning();
-    if ((body.data.discountFils ?? 0) > 0) await addPayment(trx, subscription.id, body.data.discountFils!, "cash", req.clubUser!.clerkUserId, "خصم", "discount");
-    if ((body.data.initialPaymentFils ?? 0) > 0) await addPayment(trx, subscription.id, body.data.initialPaymentFils!, body.data.paymentMethod ?? "cash", req.clubUser!.clerkUserId);
-    await trx.insert(auditLogTable).values({
-      actorId: req.clubUser!.clerkUserId,
-      action: "subscription.created",
-      entityType: "subscription",
-      entityId: subscription.id,
-      details: {
-        discountFils: body.data.discountFils ?? 0,
-        initialPaymentFils: body.data.initialPaymentFils ?? 0,
-        paymentMethod: body.data.paymentMethod ?? "cash",
-      },
-    });
-    return subscription;
-  });
+  if (!body.success) { res.status(400).json({ error: "بيانات الاشتراك أو المبالغ غير صحيحة" }); return; }
+  const created = await startSubscription(body.data, req.clubUser!.clerkUserId);
   res.status(201).json(CreateSubscriptionResponse.parse(await subscriptionView(created)));
+});
+
+router.patch("/subscriptions/:id", requireClubUser, requireAdmin, async (req, res): Promise<void> => {
+  const params = UpdateSubscriptionParams.safeParse(req.params);
+  if (!validCalendarDate(req.body?.startDate) || !validCalendarDate(req.body?.endDate)) { res.status(400).json({ error: "تاريخ بداية الاشتراك أو نهايته غير صالح" }); return; }
+  const body = UpdateSubscriptionBody.safeParse(req.body);
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success) { res.status(400).json({ error: "معرّف الاشتراك أو بيانات التعديل غير صحيحة" }); return; }
+  const updated = await correctSubscription(params.data.id, body.data, req.clubUser!.clerkUserId);
+  res.json(UpdateSubscriptionResponse.parse(await subscriptionView(updated)));
 });
 
 router.post("/subscriptions/:id/action", requireClubUser, async (req, res): Promise<void> => {
   const params = ActOnSubscriptionParams.safeParse(req.params);
+  if (req.body?.startDate !== undefined && !validCalendarDate(req.body.startDate)) { res.status(400).json({ error: "تاريخ التجديد غير صالح" }); return; }
   const body = ActOnSubscriptionBody.safeParse(req.body);
-  if (!params.success || !body.success) { res.status(400).json({ error: "إجراء الاشتراك غير صحيح" }); return; }
-  const [current] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, params.data.id)).limit(1);
-  if (!current) { res.status(404).json({ error: "الاشتراك غير موجود" }); return; }
-  let changes: Partial<typeof subscriptionsTable.$inferInsert> = {};
-  switch (body.data.action) {
-    case "pause":
-      if (effectiveStatus(current) !== "active") { res.status(409).json({ error: "لا يمكن إيقاف اشتراك غير نشط مؤقتًا" }); return; }
-      changes = { status: "paused", pausedAt: jordanDate() };
-      break;
-    case "resume":
-      if (current.status !== "paused" || !current.pausedAt) { res.status(409).json({ error: "الاشتراك ليس موقوفًا مؤقتًا" }); return; }
-      changes = { status: "active", endDate: addDays(current.endDate, Math.max(0, Math.round((Date.parse(`${jordanDate()}T00:00:00Z`) - Date.parse(`${current.pausedAt}T00:00:00Z`)) / 86400000))), pausedAt: null };
-      break;
-    case "cancel":
-      changes = { status: "cancelled", pausedAt: null };
-      break;
-    case "renew": {
-      const [plan] = await db.select().from(plansTable).where(eq(plansTable.id, body.data.planId ?? current.planId)).limit(1);
-      if (!plan) { res.status(404).json({ error: "الباقة غير موجودة" }); return; }
-      const startDate = body.data.startDate ? dateOnly(body.data.startDate) : (current.endDate >= jordanDate() ? addDays(current.endDate, 1) : jordanDate());
-      const [renewed] = await db.insert(subscriptionsTable).values({
-        memberId: current.memberId, planId: plan.id, priceFils: plan.priceFils,
-        startDate, endDate: addDays(startDate, plan.durationDays - 1),
-      }).returning();
-      await audit(req.clubUser!.clerkUserId, "subscription.renewed", "subscription", renewed.id, { previousSubscriptionId: current.id });
-      res.json(ActOnSubscriptionResponse.parse(await subscriptionView(renewed)));
-      return;
-    }
-  }
-  const [updated] = await db.update(subscriptionsTable).set(changes).where(eq(subscriptionsTable.id, current.id)).returning();
-  await audit(req.clubUser!.clerkUserId, `subscription.${body.data.action}`, "subscription", updated.id);
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success) { res.status(400).json({ error: "إجراء الاشتراك أو معرّفه غير صحيح" }); return; }
+  const updated = await subscriptionAction(params.data.id, body.data, req.clubUser!.clerkUserId);
   res.json(ActOnSubscriptionResponse.parse(await subscriptionView(updated)));
 });
 
@@ -317,15 +267,15 @@ router.get("/subscriptions/:id/payments", requireClubUser, async (req, res): Pro
 router.post("/subscriptions/:id/payments", requireClubUser, async (req, res): Promise<void> => {
   const params = CreateSubscriptionPaymentParams.safeParse(req.params);
   const body = CreateSubscriptionPaymentBody.safeParse(req.body);
-  if (!params.success || !body.success) { res.status(400).json({ error: "بيانات الدفعة غير صحيحة" }); return; }
-  const [subscription] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, params.data.id)).limit(1);
-  if (!subscription) { res.status(404).json({ error: "الاشتراك غير موجود" }); return; }
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success) { res.status(400).json({ error: "بيانات الدفعة أو معرّف الاشتراك غير صحيحة" }); return; }
   const payment = await db.transaction(async (trx) => {
+    const [subscription] = await trx.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, params.data.id)).for("update");
+    if (!subscription) throw new MembershipError(404, "الاشتراك غير موجود");
     const prior = await trx.select().from(paymentsTable).where(and(eq(paymentsTable.subscriptionId, subscription.id), eq(paymentsTable.kind, "payment")));
     const refunded = await trx.select().from(paymentsTable).where(and(eq(paymentsTable.subscriptionId, subscription.id), eq(paymentsTable.kind, "refund")));
     const alreadyPaid = prior.reduce((sum, item) => sum + item.amountFils, 0) - refunded.reduce((sum, item) => sum + item.amountFils, 0);
     const due = subscription.priceFils - subscription.discountFils - alreadyPaid;
-    if (body.data.amountFils > due) throw new Error("المبلغ المدفوع أكبر من الرصيد المتبقي");
+    if (body.data.amountFils > due) throw new MembershipError(400, "المبلغ المدفوع أكبر من الرصيد المتبقي");
     const created = await addPayment(trx, subscription.id, body.data.amountFils, body.data.method, req.clubUser!.clerkUserId, body.data.note ?? null);
     await trx.insert(auditLogTable).values({
       actorId: req.clubUser!.clerkUserId,
@@ -496,4 +446,5 @@ router.post("/club/payroll/:id/pay", requireClubUser, async (req, res): Promise<
   res.json(PayPayrollResponse.parse({ ...updated, employeeName: employee?.name ?? "", status: updated.paidFils >= updated.amountFils ? "paid" : "partial" }));
 });
 
+router.use(membershipErrorHandler);
 export default router;

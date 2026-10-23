@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { date, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { date, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { membersTable } from "./members";
 import { plansTable } from "./plans";
 import { z } from "zod/v4";
@@ -16,11 +16,13 @@ export const subscriptionsTable = pgTable(
     endDate: date("end_date", { mode: "string" }).notNull(),
     status: text("status").notNull().default("active"),
     pausedAt: date("paused_at", { mode: "string" }),
+    renewedFromId: integer("renewed_from_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("subscriptions_member_idx").on(table.memberId),
     index("subscriptions_end_date_idx").on(table.endDate),
+    uniqueIndex("subscriptions_renewed_from_idx").on(table.renewedFromId),
   ],
 );
 

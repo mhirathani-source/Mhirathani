@@ -34,6 +34,11 @@ export interface Member {
   phone: string;
   /** @nullable */
   email?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  birthDate?: string | null;
   /** @nullable */
   notes?: string | null;
   joinedAt: string;
@@ -64,6 +69,11 @@ export interface MemberInput {
   /** @nullable */
   email?: string | null;
   /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  birthDate?: string | null;
+  /**
      * @maxLength 1000
      * @nullable
      */
@@ -84,11 +94,21 @@ export interface MemberUpdate {
   /** @nullable */
   email?: string | null;
   /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  birthDate?: string | null;
+  /**
      * @maxLength 1000
      * @nullable
      */
   notes?: string | null;
   active?: boolean;
+}
+
+export interface MemberDeleteConflict {
+  error: string;
+  canArchive: boolean;
 }
 
 export type SubscriptionStatus = typeof SubscriptionStatus[keyof typeof SubscriptionStatus];
@@ -108,9 +128,14 @@ export interface Subscription {
   planId: number;
   planName: string;
   priceFils: number;
+  discountFils: number;
+  /** @nullable */
+  renewedFromId?: number | null;
   paidFils: number;
   balanceFils: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   endDate: string;
   status: SubscriptionStatus;
   createdAt: string;
@@ -207,12 +232,27 @@ export interface SubscriptionInput {
   memberId: number;
   /** @minimum 1 */
   planId: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   startDate: string;
   /** @minimum 0 */
   discountFils?: number;
   /** @minimum 0 */
   initialPaymentFils?: number;
   paymentMethod?: SubscriptionInputPaymentMethod;
+}
+
+export interface SubscriptionUpdate {
+  /** @minimum 1 */
+  planId: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
+  /**
+     * @minimum 0
+     * @maximum 2000000000
+     */
+  priceFils: number;
 }
 
 export type SubscriptionActionAction = typeof SubscriptionActionAction[keyof typeof SubscriptionActionAction];
@@ -227,6 +267,7 @@ export const SubscriptionActionAction = {
 
 export interface SubscriptionAction {
   action: SubscriptionActionAction;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   startDate?: string;
   /** @minimum 1 */
   planId?: number;

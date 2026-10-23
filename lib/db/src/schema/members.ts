@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, index, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, date, index, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const membersTable = pgTable(
@@ -9,6 +9,7 @@ export const membersTable = pgTable(
     name: text("name").notNull(),
     phone: text("phone").notNull(),
     email: text("email"),
+    birthDate: date("birth_date", { mode: "string" }),
     notes: text("notes"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
     active: boolean("active").notNull().default(true),

@@ -31,6 +31,9 @@ export const GetClubSessionResponse = zod.object({
 /**
  * @summary Get operational and financial dashboard
  */
+export const getClubDashboardResponseRecentMembersItemBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const GetClubDashboardResponse = zod.object({
   "activeMembers": zod.number().int(),
   "endingSoon": zod.number().int(),
@@ -43,6 +46,7 @@ export const GetClubDashboardResponse = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
   "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(getClubDashboardResponseRecentMembersItemBirthDateRegExp).nullish(),
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
@@ -63,11 +67,15 @@ export const ListMembersQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listMembersQueryLimitMax).default(listMembersQueryLimitDefault)
 })
 
+export const listMembersResponseBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const ListMembersResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string(),
   "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(listMembersResponseBirthDateRegExp).nullish(),
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
@@ -84,6 +92,7 @@ export const createMemberBodyNameMax = 120;
 export const createMemberBodyPhoneMin = 7;
 export const createMemberBodyPhoneMax = 24;
 
+export const createMemberBodyBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const createMemberBodyNotesMax = 1000;
 
 
@@ -92,18 +101,36 @@ export const CreateMemberBody = zod.object({
   "name": zod.string().min(createMemberBodyNameMin).max(createMemberBodyNameMax),
   "phone": zod.string().min(createMemberBodyPhoneMin).max(createMemberBodyPhoneMax),
   "email": zod.string().email().nullish(),
+  "birthDate": zod.string().regex(createMemberBodyBirthDateRegExp).nullish(),
   "notes": zod.string().max(createMemberBodyNotesMax).nullish()
 })
+
+export const createMemberResponseBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 export const CreateMemberResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string(),
   "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(createMemberResponseBirthDateRegExp).nullish(),
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
 })
+
+
+/**
+ * @summary Permanently delete an unlinked member (admin only)
+ */
+
+
+
+export const DeleteMemberParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteMemberResponse = zod.void()
 
 
 /**
@@ -116,12 +143,18 @@ export const GetMemberParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
 
+export const getMemberResponseMemberBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getMemberResponseSubscriptionsItemStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getMemberResponseSubscriptionsItemEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const GetMemberResponse = zod.object({
   "member": zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string(),
   "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(getMemberResponseMemberBirthDateRegExp).nullish(),
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
@@ -133,10 +166,12 @@ export const GetMemberResponse = zod.object({
   "planId": zod.number().int(),
   "planName": zod.string(),
   "priceFils": zod.number().int(),
+  "discountFils": zod.number().int(),
+  "renewedFromId": zod.number().int().nullish(),
   "paidFils": zod.number().int(),
   "balanceFils": zod.number().int(),
-  "startDate": zod.coerce.date(),
-  "endDate": zod.coerce.date(),
+  "startDate": zod.string().regex(getMemberResponseSubscriptionsItemStartDateRegExp),
+  "endDate": zod.string().regex(getMemberResponseSubscriptionsItemEndDateRegExp),
   "status": zod.enum(['active', 'paused', 'expired', 'cancelled']),
   "createdAt": zod.coerce.date()
 })),
@@ -169,6 +204,7 @@ export const updateMemberBodyNameMax = 120;
 export const updateMemberBodyPhoneMin = 7;
 export const updateMemberBodyPhoneMax = 24;
 
+export const updateMemberBodyBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const updateMemberBodyNotesMax = 1000;
 
 
@@ -177,15 +213,20 @@ export const UpdateMemberBody = zod.object({
   "name": zod.string().min(updateMemberBodyNameMin).max(updateMemberBodyNameMax).optional(),
   "phone": zod.string().min(updateMemberBodyPhoneMin).max(updateMemberBodyPhoneMax).optional(),
   "email": zod.string().email().nullish(),
+  "birthDate": zod.string().regex(updateMemberBodyBirthDateRegExp).nullish(),
   "notes": zod.string().max(updateMemberBodyNotesMax).nullish(),
   "active": zod.boolean().optional()
 })
+
+export const updateMemberResponseBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 export const UpdateMemberResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string(),
   "email": zod.string().nullish(),
+  "birthDate": zod.string().regex(updateMemberResponseBirthDateRegExp).nullish(),
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
@@ -277,6 +318,10 @@ export const ListSubscriptionsQueryParams = zod.object({
   "search": zod.coerce.string().optional()
 })
 
+export const listSubscriptionsResponseStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listSubscriptionsResponseEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const ListSubscriptionsResponseItem = zod.object({
   "id": zod.number().int(),
   "memberId": zod.number().int(),
@@ -284,10 +329,12 @@ export const ListSubscriptionsResponseItem = zod.object({
   "planId": zod.number().int(),
   "planName": zod.string(),
   "priceFils": zod.number().int(),
+  "discountFils": zod.number().int(),
+  "renewedFromId": zod.number().int().nullish(),
   "paidFils": zod.number().int(),
   "balanceFils": zod.number().int(),
-  "startDate": zod.coerce.date(),
-  "endDate": zod.coerce.date(),
+  "startDate": zod.string().regex(listSubscriptionsResponseStartDateRegExp),
+  "endDate": zod.string().regex(listSubscriptionsResponseEndDateRegExp),
   "status": zod.enum(['active', 'paused', 'expired', 'cancelled']),
   "createdAt": zod.coerce.date()
 })
@@ -299,6 +346,7 @@ export const ListSubscriptionsResponse = zod.array(ListSubscriptionsResponseItem
  */
 
 
+export const createSubscriptionBodyStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const createSubscriptionBodyDiscountFilsDefault = 0;
 export const createSubscriptionBodyDiscountFilsMin = 0;
 
@@ -310,11 +358,15 @@ export const createSubscriptionBodyInitialPaymentFilsMin = 0;
 export const CreateSubscriptionBody = zod.object({
   "memberId": zod.number().int().min(1),
   "planId": zod.number().int().min(1),
-  "startDate": zod.coerce.date(),
+  "startDate": zod.string().regex(createSubscriptionBodyStartDateRegExp),
   "discountFils": zod.number().int().min(createSubscriptionBodyDiscountFilsMin).default(createSubscriptionBodyDiscountFilsDefault),
   "initialPaymentFils": zod.number().int().min(createSubscriptionBodyInitialPaymentFilsMin).default(createSubscriptionBodyInitialPaymentFilsDefault),
   "paymentMethod": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']).optional()
 })
+
+export const createSubscriptionResponseStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createSubscriptionResponseEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 export const CreateSubscriptionResponse = zod.object({
   "id": zod.number().int(),
@@ -323,10 +375,59 @@ export const CreateSubscriptionResponse = zod.object({
   "planId": zod.number().int(),
   "planName": zod.string(),
   "priceFils": zod.number().int(),
+  "discountFils": zod.number().int(),
+  "renewedFromId": zod.number().int().nullish(),
   "paidFils": zod.number().int(),
   "balanceFils": zod.number().int(),
-  "startDate": zod.coerce.date(),
-  "endDate": zod.coerce.date(),
+  "startDate": zod.string().regex(createSubscriptionResponseStartDateRegExp),
+  "endDate": zod.string().regex(createSubscriptionResponseEndDateRegExp),
+  "status": zod.enum(['active', 'paused', 'expired', 'cancelled']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Correct a current subscription without changing its payments (admin only)
+ */
+
+
+
+export const UpdateSubscriptionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+export const updateSubscriptionBodyStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateSubscriptionBodyEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateSubscriptionBodyPriceFilsMin = 0;
+export const updateSubscriptionBodyPriceFilsMax = 2000000000;
+
+
+
+export const UpdateSubscriptionBody = zod.object({
+  "planId": zod.number().int().min(1),
+  "startDate": zod.string().regex(updateSubscriptionBodyStartDateRegExp),
+  "endDate": zod.string().regex(updateSubscriptionBodyEndDateRegExp),
+  "priceFils": zod.number().int().min(updateSubscriptionBodyPriceFilsMin).max(updateSubscriptionBodyPriceFilsMax)
+})
+
+export const updateSubscriptionResponseStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateSubscriptionResponseEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpdateSubscriptionResponse = zod.object({
+  "id": zod.number().int(),
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "planId": zod.number().int(),
+  "planName": zod.string(),
+  "priceFils": zod.number().int(),
+  "discountFils": zod.number().int(),
+  "renewedFromId": zod.number().int().nullish(),
+  "paidFils": zod.number().int(),
+  "balanceFils": zod.number().int(),
+  "startDate": zod.string().regex(updateSubscriptionResponseStartDateRegExp),
+  "endDate": zod.string().regex(updateSubscriptionResponseEndDateRegExp),
   "status": zod.enum(['active', 'paused', 'expired', 'cancelled']),
   "createdAt": zod.coerce.date()
 })
@@ -342,14 +443,19 @@ export const ActOnSubscriptionParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
 
+export const actOnSubscriptionBodyStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 
 export const ActOnSubscriptionBody = zod.object({
   "action": zod.enum(['pause', 'resume', 'renew', 'cancel']),
-  "startDate": zod.coerce.date().optional(),
+  "startDate": zod.string().regex(actOnSubscriptionBodyStartDateRegExp).optional(),
   "planId": zod.number().int().min(1).optional()
 })
+
+export const actOnSubscriptionResponseStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const actOnSubscriptionResponseEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 export const ActOnSubscriptionResponse = zod.object({
   "id": zod.number().int(),
@@ -358,10 +464,12 @@ export const ActOnSubscriptionResponse = zod.object({
   "planId": zod.number().int(),
   "planName": zod.string(),
   "priceFils": zod.number().int(),
+  "discountFils": zod.number().int(),
+  "renewedFromId": zod.number().int().nullish(),
   "paidFils": zod.number().int(),
   "balanceFils": zod.number().int(),
-  "startDate": zod.coerce.date(),
-  "endDate": zod.coerce.date(),
+  "startDate": zod.string().regex(actOnSubscriptionResponseStartDateRegExp),
+  "endDate": zod.string().regex(actOnSubscriptionResponseEndDateRegExp),
   "status": zod.enum(['active', 'paused', 'expired', 'cancelled']),
   "createdAt": zod.coerce.date()
 })

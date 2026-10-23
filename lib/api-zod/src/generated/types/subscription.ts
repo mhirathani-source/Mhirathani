@@ -14,10 +14,15 @@ export interface Subscription {
   planId: number;
   planName: string;
   priceFils: number;
+  discountFils: number;
+  /** @nullable */
+  renewedFromId?: number | null;
   paidFils: number;
   balanceFils: number;
-  startDate: Date;
-  endDate: Date;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
   status: SubscriptionStatus;
   createdAt: Date;
 }

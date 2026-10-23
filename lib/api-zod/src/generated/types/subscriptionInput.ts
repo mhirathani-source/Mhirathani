@@ -12,7 +12,8 @@ export interface SubscriptionInput {
   memberId: number;
   /** @minimum 1 */
   planId: number;
-  startDate: Date;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
   /** @minimum 0 */
   discountFils?: number;
   /** @minimum 0 */

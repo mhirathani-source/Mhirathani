@@ -118,6 +118,7 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: "2" 
     db.select().from(plansTable).where(eq(plansTable.id, subscription.planId)).limit(1),
     db.select().from(whatsappTemplatesTable).where(eq(whatsappTemplatesTable.name, trigger === "2" ? "expiry_2_days" : trigger === "0" ? "expiry_today" : "manual")).limit(1),
   ]);
+  if (member && !member.active) return { ok: false as const, reason: "المشترك معطّل؛ لن يتم إرسال تذكيرات له" };
   if (!member || !plan || !template || template.status !== "approved" || !template.providerTemplateName) {
     return { ok: false as const, reason: "قالب واتساب العربي غير معتمد بعد" };
   }

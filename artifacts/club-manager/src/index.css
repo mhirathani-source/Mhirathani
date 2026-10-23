@@ -699,3 +699,31 @@ tr:hover td { background:#fbfdfb; }
   .finance-page table { min-width:0!important; font-size:9px!important; }
   .finance-page th,.finance-page td { padding:6px!important; white-space:normal!important; }
 }
+
+/* Membership pages (scoped) */
+dialog.mship-dialog::backdrop{background:#111a}
+.mship-dialog{background:#fff;color:#171717;border:0;border-radius:16px;border-top:4px solid #f4c400;width:calc(100% - 32px);max-width:560px;max-height:90dvh;overflow:auto;padding:22px;margin:auto}
+.mship-dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mship-dialog-head h2{margin:0;font-size:17px}
+.mship-x{border:0;background:#f2f2ee;border-radius:8px;width:34px;height:34px;display:grid;place-items:center}
+.mship-text{color:#4a4a44;font-size:13px;line-height:1.9;margin:8px 0}
+.mship-banner{border-radius:10px;padding:10px 14px;font-size:12px;margin:10px 0;line-height:1.8}
+.mship-banner.ok{background:#fff8d6;border:1px solid #ecd567;color:#5c4a00}
+.mship-banner.err{background:#fdeeed;border:1px solid #e6b2ae;color:#8e2c27}
+.mship-pad{padding:0 20px}
+.mship-wide{grid-column:1/-1}
+.mship-form textarea,.mship-dialog textarea{border:1px solid #dfe7e2;border-radius:8px;padding:9px 11px;font:inherit;font-size:12px;resize:vertical}
+.button.mship-danger{background:#b0372f;border-color:#b0372f;color:#fff}
+.button.mship-danger:hover{background:#8e2c27}
+.mini-button.mship-danger-mini{color:#a33a33;border-color:#efd0cd;background:#fdf3f2}
+.mship-tools{margin-bottom:16px}
+.mship-tools-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mship-sub{color:#8a7a2a;font-weight:700}
+.mship-dialog,.mship-dialog form,.mship-form,.mship-dialog .form-grid,.mship-dialog .form-grid>label,.mship-form .form-grid>label{box-sizing:border-box;min-width:0;max-width:100%}
+.mship-dialog{width:calc(100vw - 32px);max-width:560px;overflow-x:hidden}
+.mship-dialog input,.mship-dialog select,.mship-dialog textarea,.mship-form input,.mship-form textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%}
+.mship-form input[type=checkbox]{width:20px}
+.mship-dialog .form-actions{flex-wrap:wrap}
+.mship-dialog-head h2{min-width:0;overflow-wrap:anywhere}
+.mship-x{flex-shrink:0}
+@media(max-width:720px){.mship-dialog{padding:16px}.mship-dialog .form-grid{grid-template-columns:minmax(0,1fr)}.mship-tools-row .button{flex:1}}

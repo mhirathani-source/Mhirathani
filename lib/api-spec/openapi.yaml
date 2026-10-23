@@ -96,6 +96,22 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Member" }
   /members/{id}:
+    delete:
+      operationId: deleteMember
+      tags: [members]
+      summary: Permanently delete an unlinked member (admin only)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Member deleted without deleting any historical records
+        "409":
+          description: Linked records exist; archive the member instead
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberDeleteConflict" }
+        "403":
+          description: Admin role required
     get:
       operationId: getMember
       tags: [members]
@@ -211,6 +227,26 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Subscription" }
+  /subscriptions/{id}:
+    patch:
+      operationId: updateSubscription
+      tags: [subscriptions]
+      summary: Correct a current subscription without changing its payments (admin only)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubscriptionUpdate" }
+      responses:
+        "200":
+          description: Current subscription updated and audited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subscription" }
+        "409":
+          description: Historical subscription, duplicate period, or price below paid amount
   /subscriptions/{id}/action:
     post:
       operationId: actOnSubscription
@@ -735,6 +771,8 @@ components:
         name: { type: string }
         phone: { type: string }
         email: { type: [string, "null"] }
+        # Calendar strings must not be coerced into timestamps by the server generator.
+        birthDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
         notes: { type: [string, "null"] }
         joinedAt: { type: string, format: date-time }
         active: { type: boolean }
@@ -745,15 +783,24 @@ components:
         name: { type: string, minLength: 2, maxLength: 120 }
         phone: { type: string, minLength: 7, maxLength: 24 }
         email: { type: [string, "null"], format: email }
+        birthDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
         notes: { type: [string, "null"], maxLength: 1000 }
     MemberUpdate:
       type: object
+      minProperties: 1
       properties:
         name: { type: string, minLength: 2, maxLength: 120 }
         phone: { type: string, minLength: 7, maxLength: 24 }
         email: { type: [string, "null"], format: email }
+        birthDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
         notes: { type: [string, "null"], maxLength: 1000 }
         active: { type: boolean }
+    MemberDeleteConflict:
+      type: object
+      required: [error, canArchive]
+      properties:
+        error: { type: string }
+        canArchive: { type: boolean }
     MemberDetail:
       type: object
       required: [member, subscriptions, payments]
@@ -790,7 +837,7 @@ components:
         active: { type: boolean }
     Subscription:
       type: object
-      required: [id, memberId, memberName, planId, planName, priceFils, paidFils, balanceFils, startDate, endDate, status, createdAt]
+      required: [id, memberId, memberName, planId, planName, priceFils, discountFils, paidFils, balanceFils, startDate, endDate, status, createdAt]
       properties:
         id: { type: integer }
         memberId: { type: integer }
@@ -798,10 +845,12 @@ components:
         planId: { type: integer }
         planName: { type: string }
         priceFils: { type: integer }
+        discountFils: { type: integer }
+        renewedFromId: { type: [integer, "null"] }
         paidFils: { type: integer }
         balanceFils: { type: integer }
-        startDate: { type: string, format: date }
-        endDate: { type: string, format: date }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
         status: { type: string, enum: [active, paused, expired, cancelled] }
         createdAt: { type: string, format: date-time }
     SubscriptionInput:
@@ -810,18 +859,26 @@ components:
       properties:
         memberId: { type: integer, minimum: 1 }
         planId: { type: integer, minimum: 1 }
-        startDate: { type: string, format: date }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
         discountFils: { type: integer, minimum: 0, default: 0 }
         initialPaymentFils: { type: integer, minimum: 0, default: 0 }
         paymentMethod:
           type: string
           enum: [cash, card, bank_transfer, wallet]
+    SubscriptionUpdate:
+      type: object
+      required: [planId, startDate, endDate, priceFils]
+      properties:
+        planId: { type: integer, minimum: 1 }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        priceFils: { type: integer, minimum: 0, maximum: 2000000000 }
     SubscriptionAction:
       type: object
       required: [action]
       properties:
         action: { type: string, enum: [pause, resume, renew, cancel] }
-        startDate: { type: string, format: date }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
         planId: { type: integer, minimum: 1 }
     Payment:
       type: object

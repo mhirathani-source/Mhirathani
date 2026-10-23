@@ -20,6 +20,11 @@ export interface MemberUpdate {
   /** @nullable */
   email?: string | null;
   /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  birthDate?: string | null;
+  /**
      * @maxLength 1000
      * @nullable
      */
