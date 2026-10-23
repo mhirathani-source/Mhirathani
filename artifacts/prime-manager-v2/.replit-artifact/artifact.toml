@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/prime-v2/"
+title = "Prime Boxing Academy Manager v2"
+description = "نسخة تجريبية مستقلة للمدير والاستقبال: واجهة عربية RTL داكنة وذهبية، مشتركين واشتراكات وتذكيرات وحضور ومالية وموظفين، ببيانات وهمية وحالة محلية فقط، دون اتصال بالنظام الحقيقي."
+version = "1.0.0"
+id = "artifacts/prime-manager-v2"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/prime-v2/" ]
+localPort = 25301
+
+[services.development]
+run = "pnpm --filter @workspace/prime-manager-v2 run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/prime-manager-v2", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/prime-manager-v2/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25301"
+BASE_PATH = "/prime-v2/"

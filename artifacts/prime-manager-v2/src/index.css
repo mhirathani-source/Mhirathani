@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Tajawal', system-ui, sans-serif;
+  --color-ink: #0f0f0f;
+  --color-panel: #171717;
+  --color-panel2: #1f1f1f;
+  --color-line: #2c2c2c;
+  --color-gold: #ffc107;
+  --color-gold-dim: #b8890a;
+  --color-mute: #9a958a;
+  --color-fg: #f3efe6;
+  --color-bad: #ef6b5f;
+  --color-good: #5fcf8f;
+}
+
+html, body { background: #0f0f0f; color: #f3efe6; font-family: 'Tajawal', system-ui, sans-serif; overflow-x: hidden; }
+body { min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+::selection { background: #ffc107; color: #0f0f0f; }
+input, select, textarea, button { font-family: inherit; }
+:focus-visible { outline: 2px solid #ffc107; outline-offset: 2px; }
+.bg-grid { background-image: radial-gradient(circle at 85% -10%, rgba(255,193,7,.12), transparent 40%), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px); background-size: auto, 100% 44px; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .35s ease both; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
+.scroll-x { min-width: 0; width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
