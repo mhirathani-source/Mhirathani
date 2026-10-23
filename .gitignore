@@ -10,6 +10,18 @@ out-tsc
 
 # dependencies
 node_modules
+/artifacts/club-manager/android/.gradle/
+/artifacts/club-manager/android/**/build/
+/artifacts/club-manager/android/local.properties
+/artifacts/club-manager/android/app/src/main/assets/public/
+/artifacts/club-manager/android/app/src/main/assets/capacitor.config.json
+/artifacts/club-manager/android/app/src/main/assets/capacitor.plugins.json
+/artifacts/club-manager/ios/App/App/public/
+/artifacts/club-manager/ios/App/Pods/
+/artifacts/club-manager/ios/App/build/
+/artifacts/club-manager/ios/App/App/capacitor.config.json
+*.keystore
+*.jks
 
 # IDEs and editors
 /.idea

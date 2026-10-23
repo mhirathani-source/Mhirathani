@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Prime Boxing Academy</string>
+    <string name="title_activity_main">Prime Boxing Academy</string>
+    <string name="package_name">com.primeboxingacademy.app</string>
+    <string name="custom_url_scheme">com.primeboxingacademy.app</string>
+</resources>

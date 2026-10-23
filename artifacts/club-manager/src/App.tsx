@@ -40,7 +40,7 @@ const appearance = {
 };
 
 function Home() {
-  return <main className="landing" dir="rtl"><div className="landing-brand"><span className="brand-mark-placeholder" aria-label="مكان شعار الأكاديمية">P</span><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
+  return <main className="landing" dir="rtl"><div className="landing-brand"><span className="brand-mark-placeholder" aria-label="مكان شعار الأكاديمية">P</span><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link><a href={`${basePath}/download`} className="button ghost" style={{ marginInlineStart: 12 }}>تحميل التطبيق</a></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
 }
 
 function HomeRedirect() {
