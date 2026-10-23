@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, ShieldCheck, Smartphone, WifiOff } from "lucide-react";
 import { PUBLIC_DOWNLOAD_URL, securePortalUrl } from "../lib/public-site";
+import QRCode from "qrcode";
+import {clearInstallPrompt, getInstallPrompt, subscribeInstallPrompt, type InstallEvent} from "../lib/install";
 import "./download.css";
 
-interface InstallEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
 export default function DownloadPage() {
-  const [prompt, setPrompt] = useState<InstallEvent | null>(null);
+  const [prompt, setPrompt] = useState<InstallEvent | null>(getInstallPrompt);
   const [guide, setGuide] = useState<"android" | "ios" | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [qrFailed, setQrFailed] = useState(false);
+  const [qr, setQr] = useState("");
   const [installed, setInstalled] = useState(false);
   const base = import.meta.env.BASE_URL;
   const portal = securePortalUrl();
@@ -22,11 +20,13 @@ export default function DownloadPage() {
     const meta = document.querySelector('meta[name="description"]');
     meta?.setAttribute("content", "ثبّت تطبيق Prime Boxing Academy على أندرويد وآيفون وآيباد مع الحفاظ على تسجيل الدخول والصلاحيات.");
     setInstalled(window.matchMedia("(display-mode: standalone)").matches || !!(navigator as Navigator & { standalone?: boolean }).standalone);
-    const before = (event: Event) => { event.preventDefault(); setPrompt(event as InstallEvent); };
+    const unsubscribe = subscribeInstallPrompt(() => setPrompt(getInstallPrompt()));
     const after = () => { setInstalled(true); setPrompt(null); setNotice("تم تثبيت التطبيق على هذا الجهاز."); };
-    window.addEventListener("beforeinstallprompt", before);
     window.addEventListener("appinstalled", after);
-    return () => { window.removeEventListener("beforeinstallprompt", before); window.removeEventListener("appinstalled", after); };
+    let live = true;
+    void QRCode.toDataURL(portal, {width:200,margin:2,errorCorrectionLevel:"M"})
+      .then(data => { if(live)setQr(data); }).catch(() => { if(live)setQrFailed(true); });
+    return () => { live = false; unsubscribe(); window.removeEventListener("appinstalled", after); };
   }, []);
 
   async function androidInstall() {
@@ -39,7 +39,7 @@ export default function DownloadPage() {
       const choice = await prompt.userChoice;
       setNotice(choice.outcome === "accepted" ? "تم قبول طلب التثبيت. انتظر تأكيد المتصفح." : "لم يُثبّت التطبيق؛ يمكنك المحاولة من قائمة المتصفح.");
     } catch { setNotice("لم يتمكن المتصفح من عرض طلب التثبيت. استخدم الخطوات الموضحة أدناه."); }
-    finally { setPrompt(null); setBusy(false); }
+    finally { clearInstallPrompt(); setBusy(false); }
   }
 
   return <main className="download-page" dir="rtl">
@@ -76,7 +76,7 @@ export default function DownloadPage() {
         <a className="download-url" href={portal} dir="ltr">{portal}</a>
         <a className="download-primary" href={portal}><ExternalLink size={18}/> فتح النظام الآمن</a>
         <p className="download-small">امسح الرمز لفتح النظام على جهازك:</p>
-        {qrFailed ? <p role="status">تعذر تحميل الرمز. استخدم الرابط الآمن أعلاه.</p> : <img className="download-qr" src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(portal)}`} width="200" height="200" alt="رمز QR للرابط الآمن للنظام" onError={() => setQrFailed(true)}/>}
+        {qrFailed ? <p role="status">تعذر تحميل الرمز. استخدم الرابط الآمن أعلاه.</p> : qr ? <img className="download-qr" src={qr} width="200" height="200" alt="رمز QR للرابط الآمن للنظام" onError={() => setQrFailed(true)}/> : <p>جارٍ تجهيز الرمز…</p>}
         <p className="download-small">الرابط أعلاه هو رابط النشر، وليس رابط معاينة التطوير. إذا ظهرت كلمة مرور خاصة بالنشر، يجب تغيير إتاحة النشر إلى Public؛ حساب النادي يبقى مطلوبًا.</p>
         <a className="download-text-link" href={PUBLIC_DOWNLOAD_URL}>رابط صفحة التحميل المنشورة</a>
         <p className="download-small">هذه الصفحة لتثبيت PWA وليست رابط APK أو TestFlight أو متجر التطبيقات.</p>

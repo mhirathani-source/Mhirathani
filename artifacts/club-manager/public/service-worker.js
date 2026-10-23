@@ -1,5 +1,5 @@
 /* Only public code/assets. Never cache HTML sessions, API, auth, finance, or other apps. */
-const CACHE = "prime-academy-public-v1";
+const CACHE = "prime-academy-public-v2";
 const BASE = new URL("./", self.location.href);
 const urlFor = path => new URL(path, BASE).href;
 const PUBLIC = ["offline.html", "logo.svg", "favicon.svg", "manifest.json", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"].map(urlFor);

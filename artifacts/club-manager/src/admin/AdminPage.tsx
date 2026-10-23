@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import "./admin.css";
+import WhatsAppToggle from "./WhatsAppToggle";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${base}/api/club/admin`;
@@ -78,6 +79,7 @@ function General() {
           <button className="button primary" disabled={save.isPending || !s.paymentMethods.length}>{save.isPending ? "جارٍ الحفظ…" : "حفظ الإعدادات"}</button>
         </form>; }}</Load>
     </div>
+    <WhatsAppToggle/>
     <div className="panel"><h2>الأقسام الإدارية</h2><div className="adm-grid" style={{ marginTop: 14 }}>{links.map(([h, t, d]) => <Link key={t} href={h} className="adm-link">{t}<small>{d}</small></Link>)}</div></div>
   </>;
 }

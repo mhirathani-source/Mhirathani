@@ -1,5 +1,5 @@
-// Verified with Replit's deployment metadata. Update after changing the published domain.
-export const PUBLIC_APP_URL = "https://Prime1academy.replit.app/";
+// Requested deployment domain. Publishing must attach this domain and be Public.
+export const PUBLIC_APP_URL = "https://prime-boxing-academy.replit.app/";
 export const PUBLIC_DOWNLOAD_URL = new URL("download", PUBLIC_APP_URL).href;
 
 export function securePortalUrl() {

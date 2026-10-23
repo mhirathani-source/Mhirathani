@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, membersTable, plansTable, subscriptionsTable, systemSettingsTable, whatsappReminderLogsTable, whatsappTemplatesTable } from "@workspace/db";
 import { logger } from "./logger";
 import { readClubSettings } from "./clubSettings";
+import {expiredMemberships, metaConfiguration, metaGraphRequest, sendTemplateReminder} from "../../../../api/whatsapp/reminders.js";
 
 const connectors = new ReplitConnectors();
 const GRAPH_VERSION = "v23.0";
@@ -17,15 +18,20 @@ export const DEFAULT_TEMPLATES = [
   { key: "expiry_today", name: "prime_subscription_expiry_today", body: "مرحبًا {{1}}، ينتهي اشتراكك في {{2}} اليوم {{3}}. نرحب بتجديد اشتراكك." },
   { key: "manual", name: "prime_subscription_manual_reminder", body: "مرحبًا {{1}}، نذكّرك باشتراكك في {{2}} الذي ينتهي بتاريخ {{3}}. تواصل معنا لأي استفسار." },
   { key: "expiry_custom", name: "prime_subscription_expiry_custom", body: "مرحبًا {{1}}، نذكّرك بقرب انتهاء اشتراكك في {{2}} بتاريخ {{3}}. نرحب بتجديد اشتراكك." },
+  { key: "expiry_expired", name: "prime_subscription_expired", body: "مرحبًا {{1}}، انتهى اشتراكك في {{2}} بتاريخ {{3}}. نرحب بتجديد اشتراكك في الأكاديمية." },
 ] as const;
 
 export async function readWhatsAppSettings() {
   const rows = await db.select().from(systemSettingsTable).where(inArray(systemSettingsTable.key, Object.values(SETTING_KEYS)));
   const values = new Map(rows.map((row) => [row.key, row.value]));
+  const phoneNumberId = process.env.META_PHONE_NUMBER_ID || values.get(SETTING_KEYS.phoneNumberId) || "";
+  const wabaId = values.get(SETTING_KEYS.wabaId) ?? "";
   return {
-    wabaId: values.get(SETTING_KEYS.wabaId) ?? "",
-    phoneNumberId: values.get(SETTING_KEYS.phoneNumberId) ?? "",
+    wabaId,
+    phoneNumberId,
     enabled: values.get(SETTING_KEYS.enabled) === "true",
+    configured: metaConfiguration().configured || Boolean(wabaId && phoneNumberId),
+    provider: process.env.META_WHATSAPP_TOKEN ? "meta" : "connector",
   };
 }
 
@@ -35,11 +41,11 @@ export async function writeWhatsAppSettings(input: { wabaId: string; phoneNumber
     [SETTING_KEYS.phoneNumberId, input.phoneNumberId.trim()],
     [SETTING_KEYS.enabled, String(input.enabled)],
   ] as const;
-  for (const [key, value] of values) {
-    await db.insert(systemSettingsTable).values({ key, value }).onConflictDoUpdate({
+  await db.transaction(async trx => { for (const [key, value] of values) {
+    await trx.insert(systemSettingsTable).values({ key, value }).onConflictDoUpdate({
       target: systemSettingsTable.key, set: { value, updatedAt: new Date() },
     });
-  }
+  } });
 }
 
 export async function ensureDefaultWhatsAppTemplates() {
@@ -51,6 +57,7 @@ export async function ensureDefaultWhatsAppTemplates() {
 }
 
 async function graph(path: string, init: {method?:string;headers?:Record<string,string>;body?:unknown} = {}) {
+  if (process.env.META_WHATSAPP_TOKEN) return metaGraphRequest(path, init);
   const response = await connectors.proxy("whatsapp-business", `/${GRAPH_VERSION}${path}`, init);
   const body = await response.json().catch(() => ({})) as Record<string, any>;
   if (!response.ok) {
@@ -109,9 +116,9 @@ function jordanPhone(raw: string) {
 }
 
 export async function sendWhatsAppReminder(subscriptionId: number, trigger: string) {
-  if (trigger !== "manual" && !/^(?:[0-9]|[12][0-9]|30)$/.test(trigger)) return {ok:false as const,reason:"موعد التذكير غير صالح"};
+  if (trigger !== "manual" && trigger !== "expired" && !/^(?:[0-9]|[12][0-9]|30)$/.test(trigger)) return {ok:false as const,reason:"موعد التذكير غير صالح"};
   const settings = await readWhatsAppSettings();
-  if (!settings.enabled || !settings.wabaId || !settings.phoneNumberId) {
+  if (!settings.enabled || !settings.configured) {
     return { ok: false as const, reason: "ربط واتساب أو الإرسال التلقائي غير مكتمل" };
   }
   const [subscription] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.id, subscriptionId)).limit(1);
@@ -119,10 +126,12 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: stri
   const [[member], [plan], [template]] = await Promise.all([
     db.select().from(membersTable).where(eq(membersTable.id, subscription.memberId)).limit(1),
     db.select().from(plansTable).where(eq(plansTable.id, subscription.planId)).limit(1),
-    db.select().from(whatsappTemplatesTable).where(eq(whatsappTemplatesTable.name, trigger === "2" ? "expiry_2_days" : trigger === "0" ? "expiry_today" : trigger === "manual" ? "manual" : "expiry_custom")).limit(1),
+    db.select().from(whatsappTemplatesTable).where(eq(whatsappTemplatesTable.name, trigger === "expired" ? "expiry_expired" : trigger === "2" ? "expiry_2_days" : trigger === "0" ? "expiry_today" : trigger === "manual" ? "manual" : "expiry_custom")).limit(1),
   ]);
   if (member && !member.active) return { ok: false as const, reason: "المشترك معطّل؛ لن يتم إرسال تذكيرات له" };
-  if (!member || !plan || !template || template.status !== "approved" || !template.providerTemplateName) {
+  // Direct credentials may refer to a template approved in Meta before local
+  // synchronization. Meta still rejects any unapproved template at send time.
+  if (!member || !plan || !template || (!metaConfiguration().configured && template.status !== "approved") || !template.providerTemplateName) {
     return { ok: false as const, reason: "قالب واتساب العربي غير معتمد بعد" };
   }
   let phone: string;
@@ -133,7 +142,12 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: stri
   }).onConflictDoNothing().returning();
   if (!log) return { ok: false as const, reason: "تم تسجيل هذا التذكير مسبقًا" };
   try {
-    const result = await graph(`/${encodeURIComponent(settings.phoneNumberId)}/messages`, {
+    const direct = metaConfiguration().configured ? await sendTemplateReminder({
+      enabled:settings.enabled,to:phone,templateName:template.providerTemplateName,
+      parameters:[member.name,plan.name,subscription.endDate],
+    }) : null;
+    if (direct && !direct.ok) throw new Error("إعداد إرسال Meta غير مكتمل");
+    const result = direct?.ok ? {messages:[{id:direct.providerMessageId}]} : await graph(`/${encodeURIComponent(settings.phoneNumberId)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -162,7 +176,7 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: stri
 
 export async function runWhatsAppReminderBatch() {
   const settings = await readWhatsAppSettings();
-  if (!settings.enabled || !settings.wabaId || !settings.phoneNumberId) return;
+  if (!settings.enabled || !settings.configured) return;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Amman" }).format(new Date());
   const addDays = (date: string, days: number) => {
     const value = new Date(`${date}T12:00:00Z`);
@@ -171,10 +185,12 @@ export async function runWhatsAppReminderBatch() {
   };
   const { reminderDays } = await readClubSettings();
   const dueDates = new Map(reminderDays.map(days => [addDays(today, days), String(days)]));
-  const rows = await db.select().from(subscriptionsTable).where(and(eq(subscriptionsTable.status, "active")));
+  const rows = await db.select().from(subscriptionsTable).where(inArray(subscriptionsTable.status, ["active","expired","paused","cancelled"]));
   for (const subscription of rows) {
+    if (subscription.status !== "active") continue;
     const trigger = dueDates.get(subscription.endDate);
     if (!trigger) continue;
     await sendWhatsAppReminder(subscription.id, trigger);
   }
+  for (const subscription of expiredMemberships(rows,today)) await sendWhatsAppReminder(subscription.id,"expired");
 }

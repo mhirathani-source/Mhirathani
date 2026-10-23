@@ -1,9 +1,10 @@
 import { z } from "zod/v4";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, auditLogTable, membersTable, subscriptionsTable, whatsappReminderLogsTable, whatsappTemplatesTable } from "@workspace/db";
 import { requireAdmin, requireClubUser } from "../middlewares/clubAuth";
 import { createProviderTemplate, ensureDefaultWhatsAppTemplates, readWhatsAppSettings, sendWhatsAppReminder, syncWhatsAppTemplates, writeWhatsAppSettings } from "../lib/whatsapp";
+import {metaConfiguration} from "../../../../api/whatsapp/reminders.js";
 
 const router: IRouter = Router();
 const settingsSchema = z.object({
@@ -12,7 +13,7 @@ const settingsSchema = z.object({
   enabled: z.boolean(),
 });
 const templateSchema = z.object({
-  key: z.enum(["expiry_2_days", "expiry_today", "manual", "expiry_custom"]),
+  key: z.enum(["expiry_2_days", "expiry_today", "manual", "expiry_custom", "expiry_expired"]),
   body: z.string().min(10).max(1024),
 });
 
@@ -22,18 +23,18 @@ router.get("/club/whatsapp/settings", requireClubUser, async (_req, res): Promis
     readWhatsAppSettings(),
     db.select().from(whatsappTemplatesTable).orderBy(whatsappTemplatesTable.name),
   ]);
-  res.json({ ...settings, configured: Boolean(settings.wabaId && settings.phoneNumberId), templates });
+  res.json({ ...settings, templates });
 });
 
 router.put("/club/whatsapp/settings", requireClubUser, requireAdmin, async (req, res): Promise<void> => {
   const parsed = settingsSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "إعدادات واتساب غير صالحة" }); return; }
-  if (parsed.data.enabled && (!parsed.data.wabaId || !parsed.data.phoneNumberId)) {
-    res.status(400).json({ error: "أدخل معرّف حساب واتساب ومعرّف رقم الهاتف قبل التفعيل" }); return;
+  if (parsed.data.enabled && !metaConfiguration().configured && (!parsed.data.wabaId || !parsed.data.phoneNumberId)) {
+    res.status(400).json({ error: "أضف META_WHATSAPP_TOKEN وMETA_PHONE_NUMBER_ID إلى Secrets، أو أكمل بيانات الموصل، قبل التفعيل" }); return;
   }
   await writeWhatsAppSettings(parsed.data);
   await db.insert(auditLogTable).values({ actorId: req.clubUser!.clerkUserId, action: "whatsapp.settings_updated", entityType: "system_setting", details: { enabled: parsed.data.enabled } });
-  res.json({ ...parsed.data, configured: Boolean(parsed.data.wabaId && parsed.data.phoneNumberId) });
+  res.json(await readWhatsAppSettings());
 });
 
 router.post("/club/whatsapp/templates/create", requireClubUser, requireAdmin, async (req, res): Promise<void> => {
@@ -67,7 +68,7 @@ router.post("/members/:id/whatsapp-reminder", requireClubUser, async (req, res):
   const [member] = await db.select().from(membersTable).where(eq(membersTable.id, memberId)).limit(1);
   if (!member) { res.status(404).json({ error: "المشترك غير موجود" }); return; }
   const [subscription] = await db.select().from(subscriptionsTable)
-    .where(and(eq(subscriptionsTable.memberId, memberId), eq(subscriptionsTable.status, "active")))
+    .where(and(eq(subscriptionsTable.memberId, memberId), inArray(subscriptionsTable.status, ["active","expired"])))
     .orderBy(desc(subscriptionsTable.endDate)).limit(1);
   if (!subscription) { res.status(409).json({ error: "لا يوجد اشتراك نشط لهذا المشترك" }); return; }
   const result = await sendWhatsAppReminder(subscription.id, "manual");

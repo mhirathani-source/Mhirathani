@@ -28,3 +28,17 @@ mtime_ms = 1792759847774
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/6a79207d-8c8c-4a34-9c38-f32336fa9ad6/aa768b18-7fa2-46b6-b5f3-6214c9ef4684"
 storage_version_token = "1792759901825079"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "lE4NknbLmukFFnTssKUuy"
+uri = "file://docs/MOBILE-AND-WHATSAPP.md"
+type = "text"
+title = "Mobile installation and WhatsApp setup"
+description = "PWA installation, Capacitor configuration, disabled Meta reminders, verification and publishing requirements."
+logical_id = "0b72e2f9-c21f-4d83-95e3-1cd2e6a935aa"
+content_hash = "sha256:ade4349fd8ca1c518a6200feda18a92f3e732717a16d017250da5cf1841914d6"
+size = 5131
+mtime_ms = 1792767777325
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/0b72e2f9-c21f-4d83-95e3-1cd2e6a935aa/f7099c06-8554-40c8-a852-8e89df869e9e"
+storage_version_token = "1792767937771242"
+content_type = "text/markdown"
