@@ -1,12 +1,13 @@
 import { Link, useParams } from "wouter";
 import { useGetClubOverview, useGetMemberProfile } from "@workspace/api-client-react";
 import { MemberProfileTools } from "./MembershipPages";
+import { MemberReminderTools } from "./MemberReminderTools";
 
 export function StaffDashboard() {
   const query = useGetClubOverview();
   return <>
     <div className="page-heading"><div><p className="eyebrow">إدارة الأكاديمية</p><h1>لوحة التحكم</h1></div><Link href="/members" className="button primary">إدارة المشتركين</Link></div>
-    <p className="notice-panel">حساب موظف — البيانات والعمليات المالية متاحة للمدير فقط.</p>
+    <p className="notice-panel">تعرض هذه الصفحة ملخصًا تشغيليًا فقط. البيانات المالية تحتاج صلاحية صريحة يمنحها المدير الرئيسي.</p>
     {query.isLoading ? <div className="loading-panel">جارٍ تحميل الملخص…</div> : query.isError ? <div className="error-panel">تعذر تحميل الملخص التشغيلي.</div> : query.data && <div className="stats-grid">
       <div className="panel"><h2>مشتركون نشطون</h2><strong>{query.data.activeMembers}</strong></div>
       <div className="panel"><h2>تنتهي خلال يومين</h2><strong>{query.data.endingSoon}</strong></div>
@@ -30,6 +31,7 @@ export function StaffMemberDetail() {
       <p>{member.active ? "حساب مفعّل" : "حساب مؤرشف"}</p>
     </div></div>
     <MemberProfileTools member={member}/>
-    <p className="notice-panel">تفاصيل الاشتراكات والمدفوعات والإيصالات متاحة للمدير فقط.</p>
+    <MemberReminderTools memberId={member.id}/>
+    <p className="notice-panel">تفاصيل المدفوعات والإيصالات لا تظهر دون الصلاحية المالية المناسبة.</p>
   </>;
 }

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { arSA } from "@clerk/localizations";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getGetClubDashboardQueryKey, getGetClubSessionQueryKey, getGetMemberQueryKey, getGetPaymentReceiptQueryKey, getListPlansQueryKey, getListFinanceCategoriesQueryKey, getListFinanceTransactionsQueryKey, getListEmployeesQueryKey, getListPayrollQueryKey, getGetFinanceReportQueryKey,
   getListCashMovementsQueryKey,
@@ -17,6 +17,11 @@ import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, use
 import { MembersPage, SubscriptionsPage, SubscriptionManager, MemberProfileTools } from "./MembershipPages";
 import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
 import { StaffDashboard, StaffMemberDetail } from "./StaffPages";
+import { useAccess } from "./authz";
+import { AdminPage } from "./admin/AdminPage";
+import { OperationalSubscriptions } from "./OperationalSubscriptions";
+import { PlansPage } from "./PlansPage";
+import { MemberFinancePage } from "./MemberFinancePage";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
@@ -54,13 +59,14 @@ function AuthPages() {
 }
 
 const allNavItems = [
-  { href: "/dashboard", title: "لوحة التحكم", icon: LayoutDashboard },
-  { href: "/members", title: "المشتركون", icon: Users },
-  { href: "/subscriptions", title: "الاشتراكات", icon: BadgeCheck },
-  { href: "/plans", title: "الباقات", icon: ClipboardList },
-  { href: "/finance", title: "المالية والرواتب", icon: Wallet },
-  { href: "/settings/whatsapp", title: "واتساب", icon: MessageCircle },
-  { href: "/reports", title: "التقارير", icon: ChartNoAxesCombined },
+  { href: "/admin", title: "لوحة التحكم والإعدادات", icon: Settings, permissions: [] },
+  { href: "/dashboard", title: "لوحة التحكم", icon: LayoutDashboard, permissions: ["dashboard.view"] },
+  { href: "/members", title: "المشتركون", icon: Users, permissions: ["members.view"] },
+  { href: "/subscriptions", title: "الاشتراكات", icon: BadgeCheck, permissions: ["subscriptions.view"] },
+  { href: "/plans", title: "الباقات", icon: ClipboardList, permissions: ["plans.view"] },
+  { href: "/finance", title: "المالية والرواتب", icon: Wallet, permissions: ["finance.view", "employees.view", "payroll.view"] },
+  { href: "/settings/whatsapp", title: "واتساب", icon: MessageCircle, permissions: ["whatsapp.view"] },
+  { href: "/reports", title: "التقارير", icon: ChartNoAxesCombined, permissions: ["reports.view"] },
 ];
 
 function AppShell({ children }: { children: ReactNode }) {
@@ -68,37 +74,64 @@ function AppShell({ children }: { children: ReactNode }) {
   const { signOut } = useClerk();
   const [location] = useLocation();
   const session = useGetClubSession();
-  const navItems = allNavItems.filter(item => !session.isError && session.data?.role === "admin" || ["/dashboard", "/members"].includes(item.href));
-  return <div className="app-shell" dir="rtl"><aside className="sidebar"><Link href="/dashboard" className="brand"><span className="brand-mark-placeholder">P</span><span>Prime Boxing Academy<small>إدارة الأكاديمية</small></span></Link><p className="nav-label">القائمة الرئيسية</p><nav>{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={`nav-link ${location===href?"active":""}`}><Icon size={18}/>{title}</Link>)}</nav><div className="sidebar-bottom"><div className="profile"><div className="avatar">{user?.firstName?.slice(0,1)||"م"}</div><div><strong>{user?.fullName||"مدير الأكاديمية"}</strong><small>{user?.primaryEmailAddress?.emailAddress}</small></div></div><button className="nav-link logout" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/>تسجيل الخروج</button></div></aside><main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">Prime Boxing Academy</span></div><div className="topbar-user">بوابة إدارة الأكاديمية</div></header><section className="page-content">{children}</section></main><nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav></div>;
+  const { can, isOwner } = useAccess();
+  const clubSettings=useQuery({queryKey:["clubSettings","operational"],queryFn:()=>clubApi<{clubName:string}>("/club/operations/settings"),enabled:session.data?.status==="active"});
+  const clubName=clubSettings.data?.clubName||"Prime Boxing Academy";
+  const navItems = allNavItems.filter(item => !session.isError && session.data?.status === "active" && (item.href === "/admin" ? isOwner : item.href === "/finance" ? item.permissions.some(p => can(p)) : can(...item.permissions)))
+    .map(item => item.href === "/admin" && session.data?.pendingCount ? { ...item, title: `${item.title} (${session.data.pendingCount} طلب)` } : item);
+  return <div className="app-shell" dir="rtl">
+    <aside className="sidebar">
+      <Link href="/dashboard" className="brand"><span className="brand-mark-placeholder">P</span><span style={{overflowWrap:"anywhere"}}>{clubName}<small>إدارة الأكاديمية</small></span></Link>
+      <p className="nav-label">القائمة الرئيسية</p>
+      <nav>{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={`nav-link ${location===href?"active":""}`}><Icon size={18}/>{title}</Link>)}</nav>
+      <div className="sidebar-bottom">
+        <div className="profile"><div className="avatar">{user?.firstName?.slice(0,1)||"م"}</div><div><strong>{user?.fullName||"حساب الأكاديمية"}</strong><small>{user?.primaryEmailAddress?.emailAddress}</small></div></div>
+        <Link className="nav-link" href="/account">إعدادات حسابي</Link>
+        <button className="nav-link logout" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/>تسجيل الخروج</button>
+      </div>
+    </aside>
+    <main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-user">بوابة إدارة الأكاديمية</div></header><section className="page-content">{children}</section></main>
+    <nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav>
+  </div>;
 }
 
-function Protected({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
+function Protected({ children, ownerOnly = false, permissions = [], anyPermissions = [] }: { children: ReactNode; ownerOnly?: boolean; permissions?: string[]; anyPermissions?: string[] }) {
   const { isLoaded, isSignedIn } = useUser();
   const session = useGetClubSession({ query: { enabled: !!isSignedIn, queryKey: getGetClubSessionQueryKey(), staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true, refetchInterval: 10000, retry: false } });
   const cache = useQueryClient();
-  const previousRole = useRef<string | null | undefined>(undefined);
+  const previousRole = useRef<string | undefined>(undefined);
+  const { can, isOwner } = useAccess();
+  const accessSignature = JSON.stringify([session.data?.userId, session.data?.role, session.data?.status, session.data?.isOwner, session.data?.permissions]);
   useEffect(() => {
-    const role = session.data?.role;
+    const role = accessSignature;
     if (previousRole.current !== undefined && previousRole.current !== role) {
       const filters = { predicate: (query: { queryKey: readonly unknown[] }) => {
         const path = String(query.queryKey[0]).replace(/^\/api/, "");
-        return !/^\/(?:club\/(?:session|overview)|members(?:\/[1-9]\d*\/profile)?)$/.test(path);
+        return path !== "/club/session";
       } };
       void cache.cancelQueries(filters).then(() => cache.removeQueries(filters));
       cache.getMutationCache().clear();
     }
     previousRole.current = role;
-  }, [session.data?.role, cache]);
+  }, [accessSignature, cache]);
   if (!isLoaded || (isSignedIn && session.isLoading)) return <div className="center"><span className="spinner"/> جارٍ التحقق من صلاحية الحساب…</div>;
   if (!isSignedIn) return <Redirect to="/"/>;
   if (session.isError) return <AppShell><div className="error-panel">تعذر التحقق من صلاحيات الحساب. أعد تحميل الصفحة.</div></AppShell>;
-  if (session.data?.setupRequired || !session.data?.role) return <AppShell><div className="setup-card"><div className="setup-icon"><Wallet/></div><h1>إعداد مدير النادي</h1><p>تم تسجيل الدخول، لكن لم يُعيّن مدير للنادي بعد. حماية البيانات مفعّلة ولن يتمكن أي حساب آخر من عرضها قبل إتمام إعداد المدير الأول.</p><p className="muted">يرجى إكمال إعداد المدير من مالك التطبيق ثم إعادة تحميل الصفحة.</p></div></AppShell>;
-  if (adminOnly && session.data.role !== "admin") return <AppShell><div className="error-panel" role="alert"><h1>ليس لديك صلاحية - Access Denied</h1><p>هذه الصفحة متاحة للمدير فقط.</p><Link href="/dashboard" className="button primary">العودة للوحة التحكم</Link></div></AppShell>;
+  if (!session.data?.role || session.data.status !== "active") {
+    const state = session.data?.status ?? "pending";
+    return <AppShell><div className="setup-card" data-testid="account-status"><div className="setup-icon"><Users/></div>
+      <h1>{state === "rejected" ? "طلب الانضمام مرفوض" : state === "suspended" ? "الحساب موقوف" : "بانتظار موافقة المدير"}</h1>
+      <p>{state === "pending" ? "حُفظ طلب انضمامك. يستطيع المدير الرئيسي مراجعته من «طلبات انضمام الموظفين». ستتحدث حالة الحساب تلقائيًا بعد الموافقة." : "تواصل مع المدير الرئيسي لمراجعة حالة حسابك وإعادة تفعيله."}</p>
+      {session.data?.setupRequired && <p>يلزم تهيئة البريد المعتمد للمدير الأول في أسرار الخادم؛ لا يُمنح أي حساب صلاحية مدير بالتسجيل الذاتي.</p>}
+      <button className="button ghost" onClick={() => void session.refetch()}>تحديث حالة الحساب</button></div></AppShell>;
+  }
+  if ((ownerOnly && !isOwner) || !can(...permissions) || (anyPermissions.length > 0 && !anyPermissions.some(p => can(p)))) return <AppShell><div className="error-panel" role="alert"><h1>ليس لديك صلاحية - Access Denied</h1><p>لم يمنحك المدير صلاحية هذه الصفحة.</p><Link href="/dashboard" className="button primary">العودة للوحة التحكم</Link></div></AppShell>;
   return <AppShell>{children}</AppShell>;
 }
 
-function RoleDashboard() { return useGetClubSession().data?.role === "admin" ? <Dashboard/> : <StaffDashboard/>; }
-function RoleMemberDetail() { return useGetClubSession().data?.role === "admin" ? <MemberDetail/> : <StaffMemberDetail/>; }
+function RoleDashboard() { return useAccess().can("payments.view", "reports.view", "members.view") ? <Dashboard/> : <StaffDashboard/>; }
+function RoleMemberDetail() { return useAccess().can("members.view", "subscriptions.view", "payments.view") ? <MemberFinancePage/> : <StaffMemberDetail/>; }
+function RoleSubscriptions() { return useAccess().can("payments.view", "plans.view", "members.view") ? <Subscriptions/> : <OperationalSubscriptions/>; }
 
 function PageHeading({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>{children}</div>;
@@ -182,6 +215,7 @@ function FinancePage() {
 
 type WhatsAppSettingsView={wabaId:string;phoneNumberId:string;enabled:boolean;configured:boolean;templates:{id:number;name:string;body:string;status:string;providerTemplateName:string|null}[]};
 function WhatsAppSettingsPage() {
+  const {can}=useAccess();
   const [settings,setSettings]=useState<WhatsAppSettingsView|null>(null);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
@@ -191,7 +225,8 @@ function WhatsAppSettingsPage() {
   async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setBusy(true);setError("");try{const result=await clubApi<WhatsAppSettingsView>("/club/whatsapp/settings",{method:"PUT",body:JSON.stringify({wabaId:String(f.get("wabaId")),phoneNumberId:String(f.get("phoneNumberId")),enabled:f.get("enabled")==="on"})});setSettings(current=>current?{...current,...result}:current);}catch(e){setError(e instanceof Error?e.message:"تعذر الحفظ");}finally{setBusy(false);}}
   async function createTemplate(key:string,body:string){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/create",{method:"POST",body:JSON.stringify({key,body})});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر إرسال القالب للمراجعة");}finally{setBusy(false);}}
   async function syncTemplates(){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/sync",{method:"POST"});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر تحديث حالة القوالب");}finally{setBusy(false);}}
-  const templateInfo=[["expiry_2_days","قبل الانتهاء بيومين"],["expiry_today","يوم الانتهاء"],["manual","تذكير يدوي"]] as const;
+  const templateInfo=[["expiry_2_days","قبل الانتهاء بيومين"],["expiry_today","يوم الانتهاء"],["manual","تذكير يدوي"],["expiry_custom","مواعيد التذكير المخصصة"]] as const;
+  if(!can("whatsapp.edit"))return <><PageHeading eyebrow="عرض فقط" title="حالة WhatsApp Business"/>{error&&<div className="error-panel">{error}</div>}{loading?<p>جارٍ التحميل…</p>:<div className="panel form-panel"><h2>إعدادات الربط</h2><p>{settings?.enabled?"التذكيرات مفعّلة في الإعدادات؛ يلزم اتصال وقوالب معتمدة":"التذكيرات معطلة"}</p><p>حالة القوالب: {settings?.templates.map(t=>`${t.providerTemplateName}: ${t.status}`).join("، ")||"لا توجد قوالب"}</p><p>تعديل الربط والقوالب يحتاج صلاحية تعديل واتساب.</p></div>}</>;
   return <><PageHeading eyebrow="ربط Meta الرسمي" title="إعدادات WhatsApp Business"/><div className="panel notice-panel"><strong>حالة التذكيرات: {settings?.enabled?"مطلوب التفعيل بعد التحقق من Meta":"الإرسال معطّل"}</strong><p>يتطلب رقم حساب WhatsApp Business، ومعرّف رقم الهاتف، وقوالب عربية معتمدة من Meta واتصالًا صالحًا. قبول الرسالة من Meta لا يعني تسليمها للهاتف.</p></div>
     {loading?<div className="loading-panel">جارٍ تحميل الإعدادات…</div>:<><form className="panel form-panel" onSubmit={save}><h2>بيانات الحساب</h2><div className="form-grid"><label>معرّف حساب WhatsApp Business<input name="wabaId" defaultValue={settings?.wabaId||""} required/></label><label>معرّف رقم الهاتف<input name="phoneNumberId" defaultValue={settings?.phoneNumberId||""} required/></label><label className="checkbox-label"><input type="checkbox" name="enabled" defaultChecked={settings?.enabled}/> تفعيل التذكيرات التلقائية</label></div><p className="muted">التذكيران المجدولان: قبل الانتهاء بيومين ويوم الانتهاء. تعمل المهمة كل دقيقة داخل خادم الـAPI؛ لا تعتمد على بقاء المدير مسجّل الدخول.</p><button className="button primary" disabled={busy}>حفظ الإعدادات</button></form>
     <div className="panel table-panel"><div className="table-toolbar"><div><h2>قوالب الرسائل العربية</h2><small>تُرسل القوالب إلى Meta للمراجعة؛ يلزم اعتمادها قبل الإرسال</small></div><button className="button ghost" onClick={syncTemplates} disabled={busy||!settings?.wabaId}>تحديث الحالات</button></div>{templateInfo.map(([key,title])=>{const t=settings?.templates.find(x=>x.name===key);return <TemplateForm key={key} templateKey={key} title={title} body={t?.body||""} status={t?.status||"draft"} busy={busy} onSubmit={body=>createTemplate(key,body)}/>})}</div></>}
@@ -217,23 +252,26 @@ function MemberDetail() {
 }
 
 function ReceiptPage() {
+  const {can}=useAccess();
   const {id:rawId}=useParams(); const id=Number(rawId); const query=useGetPaymentReceipt(id,{query:{enabled:Number.isInteger(id)&&id>0,queryKey:getGetPaymentReceiptQueryKey(id)}});
   const r=query.data;
-  return <div className="receipt-page" dir="rtl"><div className="receipt-actions"><Link href="/subscriptions" className="button ghost">رجوع</Link><button className="button primary" onClick={()=>window.print()}><Printer size={16}/>طباعة الإيصال</button></div>{query.isLoading?<div className="loading-panel">جارٍ تحميل الإيصال…</div>:r?<article className="receipt"><div className="receipt-head"><div className="brand-icon"><Dumbbell/></div><div><h1>إيصال دفع</h1><p>إدارة النادي الرياضي</p></div></div><div className="receipt-number">رقم الإيصال <strong>{r.receiptNumber}</strong></div><dl><dt>اسم المشترك</dt><dd>{r.memberName}</dd><dt>رقم الهاتف</dt><dd dir="ltr">{r.memberPhone}</dd><dt>الباقة</dt><dd>{r.planName}</dd><dt>طريقة الدفع</dt><dd>{r.method}</dd><dt>التاريخ</dt><dd>{r.createdAt.slice(0,10)}</dd></dl><div className="receipt-total"><span>المبلغ المدفوع</span><strong><Money fils={r.amountFils}/></strong></div><p className="receipt-thanks">شكرًا لاشتراككم</p></article>:<div className="error-panel">الإيصال غير موجود.</div>}</div>;
+  return <div className="receipt-page" dir="rtl"><div className="receipt-actions"><Link href="/subscriptions" className="button ghost">رجوع</Link>{can("payments.export")&&<button className="button primary" onClick={()=>window.print()}><Printer size={16}/>طباعة الإيصال / PDF</button>}</div>{query.isLoading?<div className="loading-panel">جارٍ تحميل الإيصال…</div>:r?<article className="receipt"><div className="receipt-head"><div className="brand-icon"><Dumbbell/></div><div><h1>إيصال دفع</h1><p>إدارة النادي الرياضي</p></div></div><div className="receipt-number">رقم الإيصال <strong>{r.receiptNumber}</strong></div><dl><dt>اسم المشترك</dt><dd>{r.memberName}</dd><dt>رقم الهاتف</dt><dd dir="ltr">{r.memberPhone}</dd><dt>الباقة</dt><dd>{r.planName}</dd><dt>طريقة الدفع</dt><dd>{r.method}</dd><dt>التاريخ</dt><dd>{r.createdAt.slice(0,10)}</dd></dl><div className="receipt-total"><span>المبلغ المدفوع</span><strong><Money fils={r.amountFils}/></strong></div><p className="receipt-thanks">شكرًا لاشتراككم</p></article>:<div className="error-panel">الإيصال غير موجود.</div>}</div>;
 }
 
 function MainRouter() {
   const [,setLocation]=useLocation();
   return <Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={AuthPages}/><Route path="/sign-up/*?" component={AuthPages}/>
-    <Route path="/dashboard"><Protected><RoleDashboard/></Protected></Route>
-    <Route path="/members"><Protected><Members/></Protected></Route>
-    <Route path="/members/:id"><Protected><RoleMemberDetail/></Protected></Route>
-    <Route path="/plans"><Protected adminOnly><Plans/></Protected></Route>
-    <Route path="/subscriptions"><Protected adminOnly><Subscriptions/></Protected></Route>
-    <Route path="/finance"><Protected adminOnly><FinanceManagementPage/></Protected></Route>
-    <Route path="/settings/whatsapp"><Protected adminOnly><WhatsAppSettingsPage/></Protected></Route>
-    <Route path="/reports"><Protected adminOnly><ReportsPage/></Protected></Route>
-    <Route path="/receipt/:id"><Protected adminOnly><ReceiptPage/></Protected></Route>
+    <Route path="/admin"><Protected ownerOnly><AdminPage/></Protected></Route>
+    <Route path="/account"><Protected><UserProfile routing="hash"/></Protected></Route>
+    <Route path="/dashboard"><Protected permissions={["dashboard.view"]}><RoleDashboard/></Protected></Route>
+    <Route path="/members"><Protected permissions={["members.view"]}><Members/></Protected></Route>
+    <Route path="/members/:id"><Protected permissions={["members.view"]}><RoleMemberDetail/></Protected></Route>
+    <Route path="/plans"><Protected permissions={["plans.view"]}><PlansPage/></Protected></Route>
+    <Route path="/subscriptions"><Protected permissions={["subscriptions.view"]}><RoleSubscriptions/></Protected></Route>
+    <Route path="/finance"><Protected anyPermissions={["finance.view", "employees.view", "payroll.view"]}><FinanceManagementPage/></Protected></Route>
+    <Route path="/settings/whatsapp"><Protected permissions={["whatsapp.view"]}><WhatsAppSettingsPage/></Protected></Route>
+    <Route path="/reports"><Protected permissions={["reports.view"]}><ReportsPage/></Protected></Route>
+    <Route path="/receipt/:id"><Protected permissions={["payments.view"]}><ReceiptPage/></Protected></Route>
     <Route><div className="panel"><Empty text="الصفحة غير موجودة."/><button className="button primary" onClick={()=>setLocation("/dashboard")}>العودة للوحة التحكم</button></div></Route>
   </Switch>;
 }

@@ -1,0 +1,51 @@
+import {strict as assert} from "node:assert";
+import {test,after} from "node:test";
+import {sql} from "drizzle-orm";
+import {db,pool,membersTable,clubBackupsTable,clubUsersTable} from "@workspace/db";
+import {decryptSnapshot,encryptSnapshot,previewRestoreInTransaction,restoreInTransaction,saveSnapshot,snapshot} from "./backups";
+import {isIndependentCashMovement,signedPayment,transactionCash} from "./cashLedger";
+
+after(()=>pool.end());
+test("canonical cash excludes derivative mirrors and handles refunds and signed reversals",()=>{
+  assert.equal(isIndependentCashMovement({referenceType:"subscription_payment"}),false);
+  assert.equal(isIndependentCashMovement({referenceType:"financial_transaction"}),false);
+  assert.equal(isIndependentCashMovement({referenceType:"payroll"}),false);
+  assert.equal(isIndependentCashMovement({referenceType:null}),true);
+  assert.equal(signedPayment({kind:"discount",amountFils:5000}),0);
+  assert.equal(signedPayment({kind:"refund",amountFils:5000}),-5000);
+  assert.deepEqual(transactionCash({kind:"expense",amountFils:-7000}),{direction:"in",amountFils:7000});
+  assert.deepEqual(transactionCash({kind:"income",amountFils:-7000}),{direction:"out",amountFils:7000});
+});
+test("encrypted backup round-trip and transactional restore preserve identity and audit",async()=>{
+  const rollback=new Error("intentional safe rollback");
+  const originalUsers=JSON.stringify(await db.select().from(clubUsersTable));
+  const backupCount=(await db.select().from(clubBackupsTable)).length;
+  await assert.rejects(db.transaction(async trx=>{
+    const initial=await snapshot(trx);
+    const encrypted=encryptSnapshot(initial);
+    assert.deepEqual(decryptSnapshot(encrypted),JSON.parse(JSON.stringify(initial)));
+    const tampered=JSON.parse(encrypted);tampered.tag=Buffer.alloc(16).toString("base64");
+    assert.throws(()=>decryptSnapshot(JSON.stringify(tampered)),/النسخة غير صالحة/);
+    const entry=await saveSnapshot(trx,initial,"restore-selftest","transactional-restore-selftest");
+    const [temporary]=await trx.insert(membersTable).values({name:"Transactional Restore Fixture",phone:"0790000000"}).returning();
+    let preview=await previewRestoreInTransaction(trx,entry.id);
+    assert.equal(preview.changes.members.current,initial.data.members.length+1);
+    assert.equal(preview.changes.members.backup,initial.data.members.length);
+    await trx.execute(sql`UPDATE members SET notes='changed without audit' WHERE id=${temporary.id}`);
+    await assert.rejects(restoreInTransaction(trx,entry.id,"restore-selftest",preview.token),/تغيرت البيانات/);
+    preview=await previewRestoreInTransaction(trx,entry.id);
+    await trx.execute(sql`INSERT INTO audit_log(actor_id,action,entity_type) VALUES ('restore-selftest','restore.test-revision','test')`);
+    await assert.rejects(restoreInTransaction(trx,entry.id,"restore-selftest",preview.token),/تغيرت البيانات/);
+    preview=await previewRestoreInTransaction(trx,entry.id);
+    const result=await restoreInTransaction(trx,entry.id,"restore-selftest",preview.token);
+    assert.equal(result.ok,true);
+    assert.equal((await trx.select().from(membersTable)).some(m=>m.id===temporary.id),false);
+    assert.equal((await trx.select().from(membersTable)).length,initial.data.members.length);
+    assert.equal(JSON.stringify(await trx.select().from(clubUsersTable)),originalUsers);
+    const audited=await trx.execute(sql`SELECT count(*)::integer AS n FROM audit_log WHERE action='backup.restored' AND entity_id=${entry.id}`);
+    assert.equal(audited.rows[0].n,1);
+    throw rollback;
+  }),error=>error===rollback);
+  assert.equal(JSON.stringify(await db.select().from(clubUsersTable)),originalUsers);
+  assert.equal((await db.select().from(clubBackupsTable)).length,backupCount);
+});

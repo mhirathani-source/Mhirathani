@@ -22,6 +22,27 @@
       "when": 1792726547880,
       "tag": "0002_handy_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792756708686,
+      "tag": "0003_glossy_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792757499199,
+      "tag": "0004_melodic_outlaw_kid",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792758726614,
+      "tag": "0005_clear_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

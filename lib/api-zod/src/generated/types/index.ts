@@ -13,7 +13,7 @@ export * from './cashMovementInputDirection';
 export * from './cashRegister';
 export * from './clubDashboard';
 export * from './clubSession';
-export * from './clubSessionRole';
+export * from './clubSessionStatus';
 export * from './employee';
 export * from './employeeInput';
 export * from './employeeUpdate';

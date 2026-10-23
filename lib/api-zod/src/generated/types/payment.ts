@@ -18,4 +18,5 @@ export interface Payment {
   note?: string | null;
   createdAt: Date;
   receiptNumber: string;
+  reversed?: boolean;
 }

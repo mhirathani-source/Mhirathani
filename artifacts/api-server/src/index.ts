@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startWhatsAppReminderScheduler } from "./lib/whatsappScheduler";
 import { initializeConfiguredOwner } from "./lib/ownerRole";
+import { initializeAccessModel } from "./lib/accessSetup";
 
 const rawPort = process.env["PORT"];
 
@@ -17,6 +18,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+await initializeAccessModel();
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

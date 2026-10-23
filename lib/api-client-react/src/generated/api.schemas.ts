@@ -9,23 +9,26 @@ export interface HealthStatus {
   status: string;
 }
 
-/**
- * @nullable
- */
-export type ClubSessionRole = typeof ClubSessionRole[keyof typeof ClubSessionRole] | null;
+export type ClubSessionStatus = typeof ClubSessionStatus[keyof typeof ClubSessionStatus];
 
 
-export const ClubSessionRole = {
-  admin: 'admin',
-  staff: 'staff',
+export const ClubSessionStatus = {
+  pending: 'pending',
+  active: 'active',
+  rejected: 'rejected',
+  suspended: 'suspended',
 } as const;
 
 export interface ClubSession {
   userId: string;
   email: string;
   /** @nullable */
-  role: ClubSessionRole;
+  role: string | null;
   setupRequired: boolean;
+  status: ClubSessionStatus;
+  isOwner: boolean;
+  permissions: string[];
+  pendingCount: number;
 }
 
 export interface Member {
@@ -170,6 +173,7 @@ export interface Payment {
   note?: string | null;
   createdAt: string;
   receiptNumber: string;
+  reversed?: boolean;
 }
 
 export interface MemberDetail {
@@ -199,6 +203,7 @@ export interface PlanInput {
   durationDays: number;
   /** @minimum 0 */
   priceFils: number;
+  active?: boolean;
 }
 
 export interface PlanUpdate {
@@ -557,13 +562,15 @@ export interface ManagedFinanceTransaction {
   categoryName: string | null;
   /** @nullable */
   memberId: number | null;
-  /** @minimum 1 */
   amountFils: number;
   method: ManagedFinanceTransactionMethod;
   description: string;
   transactionDate: string;
   createdBy: string;
   createdAt: string;
+  reversed: boolean;
+  /** @nullable */
+  reversalOfId: number | null;
 }
 
 export type ManagedFinanceTransactionInputKind = typeof ManagedFinanceTransactionInputKind[keyof typeof ManagedFinanceTransactionInputKind];

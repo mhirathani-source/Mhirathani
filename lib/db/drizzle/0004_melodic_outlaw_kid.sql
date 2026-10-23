@@ -1,0 +1,2 @@
+ALTER TABLE "financial_transactions" ADD COLUMN IF NOT EXISTS "reversed" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "financial_transactions" ADD COLUMN IF NOT EXISTS "reversal_of_id" integer;

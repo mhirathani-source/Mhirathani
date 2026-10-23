@@ -17,11 +17,13 @@ export interface ManagedFinanceTransaction {
   categoryName: string | null;
   /** @nullable */
   memberId: number | null;
-  /** @minimum 1 */
   amountFils: number;
   method: ManagedFinanceTransactionMethod;
   description: string;
   transactionDate: Date;
   createdBy: string;
   createdAt: Date;
+  reversed: boolean;
+  /** @nullable */
+  reversalOfId: number | null;
 }

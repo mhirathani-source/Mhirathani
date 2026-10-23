@@ -1,0 +1,22 @@
+.adm-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:18px;padding-bottom:4px}
+.adm-tabs .button{flex:none}
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.adm-link{display:block;padding:14px;border:1px solid #e5e5e0;border-radius:12px;background:#fff;font-weight:700;font-size:13px}
+.adm-link small{display:block;font-weight:400;color:#777;margin-top:4px;font-size:11px}
+.adm-link:hover{border-color:#f4c400;background:#fffbe6}
+.adm-msg{padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px}
+.adm-msg.ok{background:#e7f4eb;color:#28734d}.adm-msg.err{background:#fff1ee;color:#a34940}
+.adm-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.adm-card{padding:16px;border:1px solid #e5e5e0;border-radius:12px;background:#fff;margin-bottom:10px}
+.adm-card h3{margin:0 0 4px;font-size:14px}.adm-card small{color:#777}
+.adm-matrix{display:grid;gap:12px;margin:12px 0}
+.adm-matrix fieldset{border:1px solid #e5e5e0;border-radius:10px;padding:10px 14px}
+.adm-matrix legend{font-size:12px;font-weight:700;padding:0 6px}
+.adm-matrix label,.adm-chk{display:inline-flex;align-items:center;gap:6px;margin-inline-end:16px;font-size:12px}
+.adm-pre{background:#f6f6f2;border-radius:8px;padding:10px;font-size:11px;direction:ltr;text-align:left;white-space:pre-wrap;overflow:auto;max-height:260px}
+.adm-warn{background:#fff9dd;border:1px solid #e8d58d;border-radius:10px;padding:12px;font-size:13px;line-height:1.8}
+.adm-danger{background:#b9382f;border-color:#b9382f;color:#fff}
+.adm-form-wide{display:grid;gap:10px}
+.adm-form-wide input,.adm-form-wide select{min-height:40px;border:1px solid #dfe0da;border-radius:8px;padding:0 10px;background:#fff}
+.adm-ovr{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.adm-ovr select{min-height:32px;border:1px solid #dfe0da;border-radius:6px;font-size:11px}

@@ -3,8 +3,12 @@ import healthRouter from "./health";
 import clubRouter from "./club";
 import financeRouter from "./finance";
 import whatsappRouter from "./whatsapp";
+import adminRouter from "./admin";
+import operationsRouter from "./operations";
+import correctionsRouter from "./corrections";
 import { requireClubUser } from "../middlewares/clubAuth";
 import { financialAccess } from "../middlewares/financialAccess";
+import { enforceBusinessSettings } from "../middlewares/businessSettings";
 
 const router: IRouter = Router();
 
@@ -19,6 +23,10 @@ router.use((req, res, next) => {
   else requireClubUser(req, res, next);
 });
 router.use(financialAccess);
+router.use(enforceBusinessSettings);
+router.use(adminRouter);
+router.use(operationsRouter);
+router.use(correctionsRouter);
 router.use(clubRouter);
 router.use(financeRouter);
 router.use(whatsappRouter);

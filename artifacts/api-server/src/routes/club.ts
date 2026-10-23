@@ -49,6 +49,9 @@ import { Router, type IRouter } from "express";
 import { requireClubUser, requireAdmin, resolveClubUser } from "../middlewares/clubAuth";
 import { GetClubOverviewResponse, GetMemberProfileParams, GetMemberProfileResponse } from "@workspace/api-zod";
 import { addSubscriptionPayment as addPayment, deleteUnlinkedMember, startSubscription, correctSubscription, subscriptionAction, MembershipError, membershipErrorHandler, normalizedMemberBody, validCalendarDate } from "../lib/membership";
+import { effectivePermissions } from "../lib/permissions";
+import { readClubSettings } from "../lib/clubSettings";
+import { isIndependentCashMovement, signedPayment } from "../lib/cashLedger";
 
 const router: IRouter = Router();
 const JORDAN_TIME_ZONE = "Asia/Amman";
@@ -102,11 +105,16 @@ router.get("/club/session", async (req, res): Promise<void> => {
   }
   const identity = await clerkClient.users.getUser(userId);
   const email = identity.emailAddresses.find((item) => item.id === identity.primaryEmailAddressId)?.emailAddress ?? "";
-  const user = await resolveClubUser(userId);
+  const user = await resolveClubUser(userId, identity);
+  const [pending] = user?.isOwner ? await db.select({ count: sql<number>`count(*)::int` }).from(clubUsersTable).where(eq(clubUsersTable.status, "pending")) : [{ count: 0 }];
   res.json(GetClubSessionResponse.parse({
     userId,
     email,
-    role: user?.role === "admin" || user?.role === "staff" ? user.role : null,
+    role: user?.status === "active" ? user.role : null,
+    status: user?.status ?? "pending",
+    isOwner: user?.status === "active" && !!user.isOwner,
+    permissions: user?.status === "active" ? await effectivePermissions(user) : [],
+    pendingCount: pending.count,
     setupRequired: !process.env.CLUB_ADMIN_EMAIL,
   }));
 });
@@ -137,18 +145,21 @@ router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> 
   const soon = addDays(today, 2);
   const members = await db.select().from(membersTable);
   const subscriptions = await db.select().from(subscriptionsTable);
-  const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.kind, "payment"));
-  const expenses = 0;
+  const payments = await db.select().from(paymentsTable);
+  const transactions = await db.select().from(financialTransactionsTable);
+  const expenses = transactions.filter(t=>t.kind==="expense").reduce((sum,t)=>sum+t.amountFils,0);
   const activeMembers = new Set(subscriptions.filter((s) => effectiveStatus(s) === "active" && members.some((m) => m.id === s.memberId && m.active)).map((s) => s.memberId)).size;
   const endingSoon = subscriptions.filter((s) => effectiveStatus(s) === "active" && s.endDate >= today && s.endDate <= soon).length;
   const expiredSubscriptions = subscriptions.filter((s) => effectiveStatus(s) === "expired").length;
   const outstandingFils = subscriptions.reduce((total, s) => {
-    const paid = payments.filter((p) => p.subscriptionId === s.id).reduce((sum, p) => sum + p.amountFils, 0);
+    const paid = payments.filter((p) => p.subscriptionId === s.id).reduce((sum, p) => sum + signedPayment(p), 0);
     return total + Math.max(0, s.priceFils - s.discountFils - paid);
   }, 0);
   const monthPrefix = today.slice(0, 7);
-  const collectedFils = payments.reduce((total, payment) => total + payment.amountFils, 0);
-  const monthlyCollectedFils = payments.filter((p) => jordanDate(p.createdAt).slice(0, 7) === monthPrefix).reduce((total, p) => total + p.amountFils, 0);
+  const collectedFils = payments.reduce((total, payment) => total + signedPayment(payment), 0)
+    + transactions.filter(t=>t.kind==="income").reduce((sum,t)=>sum+t.amountFils,0);
+  const monthlyCollectedFils = payments.filter((p) => jordanDate(p.createdAt).slice(0, 7) === monthPrefix).reduce((total, p) => total + signedPayment(p), 0)
+    + transactions.filter(t=>t.kind==="income"&&t.transactionDate.startsWith(monthPrefix)).reduce((sum,t)=>sum+t.amountFils,0);
   const recentMembers = [...members].sort((a, b) => b.joinedAt.getTime() - a.joinedAt.getTime()).slice(0, 5).map((m) => ({ ...m, joinedAt: m.joinedAt.toISOString() }));
   res.json(GetClubDashboardResponse.parse({ activeMembers, endingSoon, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, recentMembers }));
 });
@@ -164,6 +175,10 @@ router.get("/members", requireClubUser, async (req, res): Promise<void> => {
 });
 
 router.post("/members", requireClubUser, async (req, res): Promise<void> => {
+  const settings = await readClubSettings();
+  if (settings.memberRequiredFields.some(field => !String(req.body?.[field] ?? "").trim())) {
+    res.status(400).json({ error: "أكمل حقول تسجيل المشترك المطلوبة في إعدادات النادي" }); return;
+  }
   const body = CreateMemberBody.safeParse(normalizedMemberBody(req.body ?? {}));
   if (!body.success) { res.status(400).json({ error: "تحقق من الاسم ورقم الهاتف والبريد الإلكتروني وتاريخ الميلاد" }); return; }
   const row = await db.transaction(async (trx) => {
@@ -184,10 +199,12 @@ router.get("/members/:id", requireClubUser, async (req, res): Promise<void> => {
   const payments = subscriptionIds.length
     ? await db.select().from(paymentsTable).where(inArray(paymentsTable.subscriptionId, subscriptionIds)).orderBy(desc(paymentsTable.createdAt))
     : [];
+  const reversalRows = payments.length ? await db.select({ id: auditLogTable.entityId }).from(auditLogTable).where(and(eq(auditLogTable.action,"payment.reversed"),inArray(auditLogTable.entityId,payments.map(p=>p.id)))) : [];
+  const reversedIds = new Set(reversalRows.map(r=>r.id));
   res.json(GetMemberResponse.parse({
     member: { ...member, joinedAt: member.joinedAt.toISOString() },
     subscriptions: await Promise.all(subscriptions.map(subscriptionView)),
-    payments: payments.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })),
+    payments: payments.map((p) => ({ ...p, reversed: reversedIds.has(p.id), createdAt: p.createdAt.toISOString() })),
   }));
 });
 
@@ -196,11 +213,15 @@ router.patch("/members/:id", requireClubUser, async (req, res): Promise<void> =>
   const body = UpdateMemberBody.safeParse(normalizedMemberBody(req.body ?? {}));
   if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success || !Object.keys(body.data).length) { res.status(400).json({ error: "بيانات التعديل أو معرّف المشترك غير صحيح؛ تحقق من الحقول المطلوبة" }); return; }
   const values = { ...body.data, ...(body.data.birthDate !== undefined ? { birthDate: body.data.birthDate ? dateOnly(body.data.birthDate) : null } : {}) };
+  const settings = await readClubSettings();
+  for (const field of settings.memberRequiredFields) {
+    if (Object.hasOwn(values,field) && !(values as Record<string,unknown>)[field]) throw new MembershipError(400,`لا يمكن إفراغ الحقل الإلزامي: ${{name:"الاسم",phone:"الهاتف",email:"البريد الإلكتروني",birthDate:"تاريخ الميلاد"}[field]}`);
+  }
   const row = await db.transaction(async (trx) => {
     const [before] = await trx.select().from(membersTable).where(eq(membersTable.id, params.data.id)).for("update");
     if (!before) throw new MembershipError(404, "المشترك غير موجود");
     const [updated] = await trx.update(membersTable).set(values).where(eq(membersTable.id, params.data.id)).returning();
-    await trx.insert(auditLogTable).values({ actorId: req.clubUser!.clerkUserId, action: "member.updated", entityType: "member", entityId: updated.id, details: { fields: Object.keys(body.data), activeBefore: before.active, activeAfter: updated.active } });
+    await trx.insert(auditLogTable).values({ actorId: req.clubUser!.clerkUserId, action: "member.updated", entityType: "member", entityId: updated.id, details: { before, after: updated } });
     return updated;
   });
   res.json(UpdateMemberResponse.parse({ ...row, joinedAt: row.joinedAt.toISOString() }));
@@ -262,7 +283,7 @@ router.patch("/subscriptions/:id", requireClubUser, requireAdmin, async (req, re
   if (!validCalendarDate(req.body?.startDate) || !validCalendarDate(req.body?.endDate)) { res.status(400).json({ error: "تاريخ بداية الاشتراك أو نهايته غير صالح" }); return; }
   const body = UpdateSubscriptionBody.safeParse(req.body);
   if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || !body.success) { res.status(400).json({ error: "معرّف الاشتراك أو بيانات التعديل غير صحيحة" }); return; }
-  const updated = await correctSubscription(params.data.id, body.data, req.clubUser!.clerkUserId);
+  const updated = await correctSubscription(params.data.id, body.data, req.clubUser!.clerkUserId, req.clubUser!.isOwner);
   res.json(UpdateSubscriptionResponse.parse(await subscriptionView(updated)));
 });
 
@@ -376,21 +397,24 @@ router.get("/club/finance/report", requireClubUser, async (req, res): Promise<vo
   const to = typeof req.query.to === "string" ? req.query.to : "";
   const pattern = /^\d{4}-\d{2}-\d{2}$/;
   if (!pattern.test(from) || !pattern.test(to) || from > to) { res.status(400).json({ error: "حدد فترة صحيحة للتقرير" }); return; }
-  const [transactions, paymentRows, subscriptions, payrollRows, cashRows] = await Promise.all([
+  const [transactions, paymentRows, subscriptions, payrollRows, cashRows, allCashTransactions] = await Promise.all([
     db.select().from(financialTransactionsTable).where(and(sql`${financialTransactionsTable.transactionDate} >= ${from}`, sql`${financialTransactionsTable.transactionDate} <= ${to}`)),
-    db.select().from(paymentsTable).where(eq(paymentsTable.kind, "payment")),
+    db.select().from(paymentsTable),
     db.select().from(subscriptionsTable),
     db.select().from(payrollEntriesTable),
     db.select().from(cashMovementsTable),
+    db.select().from(financialTransactionsTable).where(eq(financialTransactionsTable.method,"cash")),
   ]);
-  const paymentsInRange = paymentRows.filter((p) => { const d = jordanDate(p.createdAt); return d >= from && d <= to; }).reduce((sum, p) => sum + p.amountFils, 0);
+  const paymentsInRange = paymentRows.filter((p) => { const d = jordanDate(p.createdAt); return d >= from && d <= to; }).reduce((sum, p) => sum + signedPayment(p), 0);
   const incomeFils = paymentsInRange + transactions.filter((t) => t.kind === "income").reduce((sum, t) => sum + t.amountFils, 0);
   const expensesFils = transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + t.amountFils, 0);
   const totalPaid = new Map<number, number>();
-  for (const p of paymentRows) totalPaid.set(p.subscriptionId, (totalPaid.get(p.subscriptionId) ?? 0) + p.amountFils);
+  for (const p of paymentRows) totalPaid.set(p.subscriptionId, (totalPaid.get(p.subscriptionId) ?? 0) + signedPayment(p));
   const debtFils = subscriptions.reduce((sum, s) => sum + Math.max(0, s.priceFils - s.discountFils - (totalPaid.get(s.id) ?? 0)), 0);
   const payrollDueFils = payrollRows.reduce((sum, p) => sum + Math.max(0, p.amountFils - p.paidFils), 0);
-  const cashBalanceFils = cashRows.reduce((sum, row) => sum + (row.direction === "in" ? row.amountFils : -row.amountFils), 0);
+  const cashBalanceFils = cashRows.filter(isIndependentCashMovement).reduce((sum, row) => sum + (row.direction === "in" ? row.amountFils : -row.amountFils), 0)
+    + paymentRows.filter(p=>p.method==="cash").reduce((sum,p)=>sum+signedPayment(p),0)
+    + allCashTransactions.reduce((sum,t)=>sum+(t.kind==="income"?t.amountFils:-t.amountFils),0);
   res.json(GetFinanceReportResponse.parse({ from, to, incomeFils, expensesFils, netFils: incomeFils - expensesFils, debtFils, payrollDueFils, cashBalanceFils }));
 });
 

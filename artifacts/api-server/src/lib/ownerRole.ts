@@ -14,13 +14,19 @@ export async function grantConfiguredOwner(identity: Identity) {
     const [previousGrant] = await trx.select({ id: auditLogTable.id }).from(auditLogTable)
       .where(and(eq(auditLogTable.actorId, identity.id), eq(auditLogTable.action, action))).limit(1);
     // A completed bootstrap never restores a subsequently revoked role.
-    if (previousGrant) return existing;
+    if (previousGrant) {
+      if (existing?.role === "admin" && existing.status === "active" && !existing.isOwner) {
+        const [owner] = await trx.update(clubUsersTable).set({ isOwner: true, updatedAt: new Date() }).where(eq(clubUsersTable.id, existing.id)).returning();
+        return owner;
+      }
+      return existing;
+    }
     await trx.insert(clubUsersTable).values({ clerkUserId: identity.id, email: primary.emailAddress, role: "staff" }).onConflictDoNothing();
     let [user] = await trx.select().from(clubUsersTable).where(eq(clubUsersTable.clerkUserId, identity.id)).for("update");
     const [racedGrant] = await trx.select({ id: auditLogTable.id }).from(auditLogTable)
       .where(and(eq(auditLogTable.actorId, identity.id), eq(auditLogTable.action, action))).limit(1);
     if (!racedGrant) {
-      [user] = await trx.update(clubUsersTable).set({ role: "admin" }).where(eq(clubUsersTable.id, user.id)).returning();
+      [user] = await trx.update(clubUsersTable).set({ role: "admin", status: "active", isOwner: true, updatedAt: new Date() }).where(eq(clubUsersTable.id, user.id)).returning();
       await trx.insert(auditLogTable).values({ actorId: identity.id, action, entityType: "club_user", entityId: user.id, details: { source: "configured_verified_owner", previousRole: existing?.role ?? null } });
     }
     return user;

@@ -58,8 +58,12 @@ export const HealthCheckResponse = zod.object({
 export const GetClubSessionResponse = zod.object({
   "userId": zod.string(),
   "email": zod.string(),
-  "role": zod.union([zod.literal('admin'),zod.literal('staff'),zod.literal(null)]).nullable(),
-  "setupRequired": zod.boolean()
+  "role": zod.string().nullable(),
+  "setupRequired": zod.boolean(),
+  "status": zod.enum(['pending', 'active', 'rejected', 'suspended']),
+  "isOwner": zod.boolean(),
+  "permissions": zod.array(zod.string()),
+  "pendingCount": zod.number().int()
 })
 
 
@@ -218,7 +222,8 @@ export const GetMemberResponse = zod.object({
   "kind": zod.enum(['payment', 'refund', 'discount']),
   "note": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
-  "receiptNumber": zod.string()
+  "receiptNumber": zod.string(),
+  "reversed": zod.boolean().optional()
 }))
 })
 
@@ -296,7 +301,8 @@ export const createPlanBodyPriceFilsMin = 0;
 export const CreatePlanBody = zod.object({
   "name": zod.string().min(createPlanBodyNameMin).max(createPlanBodyNameMax),
   "durationDays": zod.number().int().min(1).max(createPlanBodyDurationDaysMax),
-  "priceFils": zod.number().int().min(createPlanBodyPriceFilsMin)
+  "priceFils": zod.number().int().min(createPlanBodyPriceFilsMin),
+  "active": zod.boolean().optional()
 })
 
 export const CreatePlanResponse = zod.object({
@@ -528,7 +534,8 @@ export const ListSubscriptionPaymentsResponseItem = zod.object({
   "kind": zod.enum(['payment', 'refund', 'discount']),
   "note": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
-  "receiptNumber": zod.string()
+  "receiptNumber": zod.string(),
+  "reversed": zod.boolean().optional()
 })
 export const ListSubscriptionPaymentsResponse = zod.array(ListSubscriptionPaymentsResponseItem)
 
@@ -562,7 +569,8 @@ export const CreateSubscriptionPaymentResponse = zod.object({
   "kind": zod.enum(['payment', 'refund', 'discount']),
   "note": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
-  "receiptNumber": zod.string()
+  "receiptNumber": zod.string(),
+  "reversed": zod.boolean().optional()
 })
 
 
@@ -910,21 +918,20 @@ export const ListFinanceTransactionsV2QueryParams = zod.object({
   "kind": zod.enum(['income', 'expense']).optional()
 })
 
-
-
-
 export const ListFinanceTransactionsV2ResponseItem = zod.object({
   "id": zod.number().int(),
   "kind": zod.enum(['income', 'expense']),
   "categoryId": zod.number().int().nullable(),
   "categoryName": zod.string().nullable(),
   "memberId": zod.number().int().nullable(),
-  "amountFils": zod.number().int().min(1),
+  "amountFils": zod.number().int(),
   "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
   "description": zod.string(),
   "transactionDate": zod.coerce.date(),
   "createdBy": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "reversed": zod.boolean(),
+  "reversalOfId": zod.number().int().nullable()
 })
 export const ListFinanceTransactionsV2Response = zod.array(ListFinanceTransactionsV2ResponseItem)
 
@@ -949,21 +956,20 @@ export const CreateFinanceTransactionV2Body = zod.object({
   "transactionDate": zod.coerce.date()
 })
 
-
-
-
 export const CreateFinanceTransactionV2Response = zod.object({
   "id": zod.number().int(),
   "kind": zod.enum(['income', 'expense']),
   "categoryId": zod.number().int().nullable(),
   "categoryName": zod.string().nullable(),
   "memberId": zod.number().int().nullable(),
-  "amountFils": zod.number().int().min(1),
+  "amountFils": zod.number().int(),
   "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
   "description": zod.string(),
   "transactionDate": zod.coerce.date(),
   "createdBy": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "reversed": zod.boolean(),
+  "reversalOfId": zod.number().int().nullable()
 })
 
 
@@ -994,21 +1000,20 @@ export const UpdateFinanceTransactionBody = zod.object({
   "transactionDate": zod.coerce.date().optional()
 })
 
-
-
-
 export const UpdateFinanceTransactionResponse = zod.object({
   "id": zod.number().int(),
   "kind": zod.enum(['income', 'expense']),
   "categoryId": zod.number().int().nullable(),
   "categoryName": zod.string().nullable(),
   "memberId": zod.number().int().nullable(),
-  "amountFils": zod.number().int().min(1),
+  "amountFils": zod.number().int(),
   "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
   "description": zod.string(),
   "transactionDate": zod.coerce.date(),
   "createdBy": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "reversed": zod.boolean(),
+  "reversalOfId": zod.number().int().nullable()
 })
 
 
@@ -1196,9 +1201,6 @@ export const GetFinancePeriodReportQueryParams = zod.object({
   "date": zod.date()
 })
 
-
-
-
 export const GetFinancePeriodReportResponse = zod.object({
   "period": zod.enum(['day', 'month', 'year']),
   "fromDate": zod.coerce.date(),
@@ -1224,12 +1226,14 @@ export const GetFinancePeriodReportResponse = zod.object({
   "categoryId": zod.number().int().nullable(),
   "categoryName": zod.string().nullable(),
   "memberId": zod.number().int().nullable(),
-  "amountFils": zod.number().int().min(1),
+  "amountFils": zod.number().int(),
   "method": zod.enum(['cash', 'card', 'bank_transfer', 'wallet']),
   "description": zod.string(),
   "transactionDate": zod.coerce.date(),
   "createdBy": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "reversed": zod.boolean(),
+  "reversalOfId": zod.number().int().nullable()
 }))
 })
 

@@ -5,6 +5,7 @@ import {
 import type { CreateSubscriptionBody, UpdateSubscriptionBody, ActOnSubscriptionBody } from "@workspace/api-zod";
 import { and, eq, ne, lte, gte } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
+import { readClubSettings } from "./clubSettings";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Subscription = typeof subscriptionsTable.$inferSelect;
@@ -109,11 +110,13 @@ export async function deleteUnlinkedMember(id: number, actorId: string) {
 }
 
 export async function startSubscription(input: CreateInput, actorId: string) {
+  const settings = await readClubSettings();
   return db.transaction(async (trx) => {
     const member = await lockMember(trx, input.memberId);
     const plan = await activePlan(trx, input.planId);
     const start = dateString(input.startDate), end = addCalendarDays(start, plan.durationDays - 1);
     const discount = input.discountFils ?? 0, paid = input.initialPaymentFils ?? 0;
+    if (discount > Math.floor(plan.priceFils * settings.maxDiscountPercent / 100)) throw new MembershipError(400, "الخصم يتجاوز الحد المسموح في إعدادات النادي");
     if (discount > plan.priceFils) throw new MembershipError(400, "الخصم أكبر من سعر الباقة");
     if (paid > plan.priceFils - discount) throw new MembershipError(400, "المبلغ المدفوع أكبر من المستحق");
     await noOverlap(trx, member.id, plan.id, start, end);
@@ -136,13 +139,13 @@ async function lockedSubscription(trx: Transaction, id: number, activeMember = f
   return row;
 }
 
-export async function correctSubscription(id: number, input: UpdateInput, actorId: string) {
+export async function correctSubscription(id: number, input: UpdateInput, actorId: string, allowHistorical = false) {
   return db.transaction(async (trx) => {
     const current = await lockedSubscription(trx, id);
-    if (!["active", "paused"].includes(subscriptionStatus(current))) throw new MembershipError(409, "لا يمكن تعديل اشتراك منتهي أو ملغي؛ السجل التاريخي محفوظ، ويمكن إنشاء تجديد بدلًا منه");
+    if (!allowHistorical && !["active", "paused"].includes(subscriptionStatus(current))) throw new MembershipError(409, "لا يمكن تعديل اشتراك منتهي أو ملغي؛ السجل التاريخي محفوظ، ويمكن إنشاء تجديد بدلًا منه");
     const start = dateString(input.startDate), end = dateString(input.endDate);
     if (end < start) throw new MembershipError(400, "تاريخ الانتهاء يجب ألا يسبق تاريخ البداية");
-    if (end < jordanToday() && current.status !== "paused") throw new MembershipError(400, "لا يمكن تحويل الاشتراك الحالي إلى سجل منتهٍ بالتعديل؛ استخدم الإلغاء عند الحاجة");
+    if (!allowHistorical && end < jordanToday() && current.status !== "paused") throw new MembershipError(400, "لا يمكن تحويل الاشتراك الحالي إلى سجل منتهٍ بالتعديل؛ استخدم الإلغاء عند الحاجة");
     if (input.planId !== current.planId) await activePlan(trx, input.planId);
     const paid = await netPaid(trx, id);
     if (input.priceFils < current.discountFils + paid || input.priceFils < current.discountFils) {
@@ -159,9 +162,11 @@ export async function correctSubscription(id: number, input: UpdateInput, actorI
 }
 
 export async function subscriptionAction(id: number, input: ActionInput, actorId: string) {
+  const settings = await readClubSettings();
   return db.transaction(async (trx) => {
     const current = await lockedSubscription(trx, id, input.action === "renew" || input.action === "resume");
     if (input.action === "renew") {
+      if (settings.renewalPolicy === "after_expiry_only" && subscriptionStatus(current) !== "expired") throw new MembershipError(409,"سياسة النادي تسمح بالتجديد بعد انتهاء الاشتراك فقط");
       if (current.status === "paused" || current.status === "cancelled") throw new MembershipError(409, "لا يمكن تجديد اشتراك موقوف مؤقتًا أو ملغي؛ استأنفه أولًا أو أنشئ اشتراكًا جديدًا");
       const [prior] = await trx.select({ id: subscriptionsTable.id }).from(subscriptionsTable).where(eq(subscriptionsTable.renewedFromId, id)).limit(1);
       if (prior) throw new MembershipError(409, "تم تجديد هذا الاشتراك بالفعل؛ استخدم أحدث اشتراك للتجديد التالي");

@@ -1,6 +1,6 @@
 - [مواعيد التذكيرات](reminder-requirements.md) — تذكير قبل الانتهاء بيومين ويوم الانتهاء؛ هذه المواعيد تحل محل المواعيد السابقة.
 - [تاريخ المشترك المالي](member-history-policy.md) — سياسة المستخدم: الحفاظ على المدفوعات والديون والسجلات المرتبطة، وتقديم الأرشفة بدل الحذف غير الآمن.
-- [Financial access policy](financial-access-policy.md) — Only admins may see financial data anywhere; enforce on the server and preserve the owner's admin access.
+- [Financial access policy](financial-access-policy.md) — Owner has full access; other accounts need explicit section/action grants, enforced on the server.
 - [V2 demo boundary](v2-demo-boundary.md) — User chose an independent local-state demo; preserve the real system and keep demo roles and data isolated.
 - [Public mobile installation](mobile-install-policy.md) — Owner approved a public install page, not public access to club records or financial data.
 - [بيئة بناء Android](android-build-environment.md) — فهرس حزم النظام لا يضمن إتاحة سمات SDK؛ غياب السمة لا يمنع بناء APK بأدوات Google الرسمية.

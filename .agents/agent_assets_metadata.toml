@@ -14,3 +14,17 @@ mtime_ms = 1792755658099
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/52ad0c5f-b532-4d90-9a3f-d14044bf01ec/d8b7fe5e-c5ac-4d1b-ad85-501c8a3f497a"
 storage_version_token = "1792755674251913"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Fn_KH1wNqMeboUO4aN5gt"
+uri = "file://docs/ADMIN-CHANGE-REPORT.md"
+type = "text"
+title = "تقرير لوحة التحكم والصلاحيات"
+description = "الإصلاحات والاختبارات المنفذة والملفات المعدلة والحدود المتبقية قبل الاعتماد الكامل."
+logical_id = "6a79207d-8c8c-4a34-9c38-f32336fa9ad6"
+content_hash = "sha256:22355f253e7d9674ef8f15fe498d8c5ec91fbf5a2e2d491361687516ebf039be"
+size = 7958
+mtime_ms = 1792759847774
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/6a79207d-8c8c-4a34-9c38-f32336fa9ad6/aa768b18-7fa2-46b6-b5f3-6214c9ef4684"
+storage_version_token = "1792759901825079"
+content_type = "text/markdown"

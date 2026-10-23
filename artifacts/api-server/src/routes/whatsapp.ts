@@ -12,7 +12,7 @@ const settingsSchema = z.object({
   enabled: z.boolean(),
 });
 const templateSchema = z.object({
-  key: z.enum(["expiry_2_days", "expiry_today", "manual"]),
+  key: z.enum(["expiry_2_days", "expiry_today", "manual", "expiry_custom"]),
   body: z.string().min(10).max(1024),
 });
 

@@ -26,5 +26,6 @@ export * from "./members";
 export * from "./payments";
 export * from "./plans";
 export * from "./roles";
+export * from "./backups";
 export * from "./subscriptions";
 export * from "./whatsapp";

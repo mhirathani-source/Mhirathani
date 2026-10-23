@@ -2,6 +2,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, membersTable, plansTable, subscriptionsTable, systemSettingsTable, whatsappReminderLogsTable, whatsappTemplatesTable } from "@workspace/db";
 import { logger } from "./logger";
+import { readClubSettings } from "./clubSettings";
 
 const connectors = new ReplitConnectors();
 const GRAPH_VERSION = "v23.0";
@@ -15,6 +16,7 @@ export const DEFAULT_TEMPLATES = [
   { key: "expiry_2_days", name: "prime_subscription_expiry_2_days", body: "مرحبًا {{1}}، يتبقى يومان على انتهاء اشتراكك في {{2}} بتاريخ {{3}}. نرحب بتجديد اشتراكك." },
   { key: "expiry_today", name: "prime_subscription_expiry_today", body: "مرحبًا {{1}}، ينتهي اشتراكك في {{2}} اليوم {{3}}. نرحب بتجديد اشتراكك." },
   { key: "manual", name: "prime_subscription_manual_reminder", body: "مرحبًا {{1}}، نذكّرك باشتراكك في {{2}} الذي ينتهي بتاريخ {{3}}. تواصل معنا لأي استفسار." },
+  { key: "expiry_custom", name: "prime_subscription_expiry_custom", body: "مرحبًا {{1}}، نذكّرك بقرب انتهاء اشتراكك في {{2}} بتاريخ {{3}}. نرحب بتجديد اشتراكك." },
 ] as const;
 
 export async function readWhatsAppSettings() {
@@ -106,7 +108,8 @@ function jordanPhone(raw: string) {
   return digits;
 }
 
-export async function sendWhatsAppReminder(subscriptionId: number, trigger: "2" | "0" | "manual") {
+export async function sendWhatsAppReminder(subscriptionId: number, trigger: string) {
+  if (trigger !== "manual" && !/^(?:[0-9]|[12][0-9]|30)$/.test(trigger)) return {ok:false as const,reason:"موعد التذكير غير صالح"};
   const settings = await readWhatsAppSettings();
   if (!settings.enabled || !settings.wabaId || !settings.phoneNumberId) {
     return { ok: false as const, reason: "ربط واتساب أو الإرسال التلقائي غير مكتمل" };
@@ -116,7 +119,7 @@ export async function sendWhatsAppReminder(subscriptionId: number, trigger: "2" 
   const [[member], [plan], [template]] = await Promise.all([
     db.select().from(membersTable).where(eq(membersTable.id, subscription.memberId)).limit(1),
     db.select().from(plansTable).where(eq(plansTable.id, subscription.planId)).limit(1),
-    db.select().from(whatsappTemplatesTable).where(eq(whatsappTemplatesTable.name, trigger === "2" ? "expiry_2_days" : trigger === "0" ? "expiry_today" : "manual")).limit(1),
+    db.select().from(whatsappTemplatesTable).where(eq(whatsappTemplatesTable.name, trigger === "2" ? "expiry_2_days" : trigger === "0" ? "expiry_today" : trigger === "manual" ? "manual" : "expiry_custom")).limit(1),
   ]);
   if (member && !member.active) return { ok: false as const, reason: "المشترك معطّل؛ لن يتم إرسال تذكيرات له" };
   if (!member || !plan || !template || template.status !== "approved" || !template.providerTemplateName) {
@@ -166,7 +169,8 @@ export async function runWhatsAppReminderBatch() {
     value.setUTCDate(value.getUTCDate() + days);
     return value.toISOString().slice(0, 10);
   };
-  const dueDates = new Map([[addDays(today, 2), "2" as const], [today, "0" as const]]);
+  const { reminderDays } = await readClubSettings();
+  const dueDates = new Map(reminderDays.map(days => [addDays(today, days), String(days)]));
   const rows = await db.select().from(subscriptionsTable).where(and(eq(subscriptionsTable.status, "active")));
   for (const subscription of rows) {
     const trigger = dueDates.get(subscription.endDate);

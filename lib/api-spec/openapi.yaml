@@ -777,12 +777,18 @@ components:
         - status
     ClubSession:
       type: object
-      required: [userId, email, role, setupRequired]
+      required: [userId, email, role, setupRequired, status, isOwner, permissions, pendingCount]
       properties:
         userId: { type: string }
         email: { type: string }
-        role: { type: [string, "null"], enum: [admin, staff, null] }
+        role: { type: [string, "null"] }
         setupRequired: { type: boolean }
+        status: { type: string, enum: [pending, active, rejected, suspended] }
+        isOwner: { type: boolean }
+        permissions:
+          type: array
+          items: { type: string }
+        pendingCount: { type: integer }
     ClubDashboard:
       type: object
       required: [activeMembers, endingSoon, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, recentMembers]
@@ -861,6 +867,7 @@ components:
         name: { type: string, minLength: 2, maxLength: 100 }
         durationDays: { type: integer, minimum: 1, maximum: 3650 }
         priceFils: { type: integer, minimum: 0 }
+        active: { type: boolean }
     PlanUpdate:
       type: object
       properties:
@@ -925,6 +932,7 @@ components:
         note: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }
         receiptNumber: { type: string }
+        reversed: { type: boolean }
     PaymentInput:
       type: object
       required: [amountFils, method]
@@ -1058,19 +1066,21 @@ components:
         active: { type: boolean }
     ManagedFinanceTransaction:
       type: object
-      required: [id, kind, categoryId, categoryName, memberId, amountFils, method, description, transactionDate, createdBy, createdAt]
+      required: [id, kind, categoryId, categoryName, memberId, amountFils, method, description, transactionDate, createdBy, createdAt, reversed, reversalOfId]
       properties:
         id: { type: integer }
         kind: { type: string, enum: [income, expense] }
         categoryId: { type: ["integer", "null"] }
         categoryName: { type: ["string", "null"] }
         memberId: { type: ["integer", "null"] }
-        amountFils: { type: integer, minimum: 1 }
+        amountFils: { type: integer }
         method: { type: string, enum: [cash, card, bank_transfer, wallet] }
         description: { type: string }
         transactionDate: { type: string, format: date }
         createdBy: { type: string }
         createdAt: { type: string, format: date-time }
+        reversed: { type: boolean }
+        reversalOfId: { type: ["integer", "null"] }
     ManagedFinanceTransactionInput:
       type: object
       required: [kind, amountFils, method, description, transactionDate]

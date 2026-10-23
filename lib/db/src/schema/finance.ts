@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, date, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { membersTable } from "./members";
 import { z } from "zod/v4";
 
@@ -20,11 +20,13 @@ export const financialTransactionsTable = pgTable(
     amountFils: integer("amount_fils").notNull(),
     method: text("method").notNull(),
     description: text("description").notNull(),
+    reversed: boolean("reversed").notNull().default(false),
+    reversalOfId: integer("reversal_of_id"),
     transactionDate: date("transaction_date", { mode: "string" }).notNull(),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("financial_transactions_date_idx").on(table.transactionDate)],
+  (table) => [index("financial_transactions_date_idx").on(table.transactionDate),uniqueIndex("finance_reversal_once_idx").on(table.reversalOfId)],
 );
 
 export const insertFinancialTransactionSchema = createInsertSchema(financialTransactionsTable).omit({ id: true, createdAt: true });

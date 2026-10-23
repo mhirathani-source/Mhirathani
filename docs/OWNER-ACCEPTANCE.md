@@ -1,0 +1,17 @@
+# Critical onboarding and permission test journey
+
+DEV environment only. Main app root preview, APIs /api. Do not touch v2 or production. This is Clerk auth: **override login claims** and sign in programmatically; do not use Clerk login UI/passwords.
+
+One journey: a new staff member requests access, owner approves and controls access.
+
+1. Choose an existing active owner in development club_users after startup. Use that existing Clerk identity (email/clerk_user_id) for the programmatic owner session; do NOT change its identity, role, status, grants or password. If the programmatic login cannot reuse an existing identity, create a clearly temporary DEV owner fixture with a new Clerk identity and `role=admin,status=active,is_owner=true`. Never replace or demote the real owner. Report any temporary privileged account remaining at the end.
+2. In another browser context, programmatic Clerk sign-in as `Approval Staff <unique>@example.com`. Open /dashboard. GET /api/club/session must persist club_users with default staff,pending,is_owner=false and display a waiting-for-approval message, not club records. Note fixture identity.
+3. Owner opens /admin; "المستخدمون والموافقات" tab. Verify pending request exists. Approve as staff, no financial grants. Same staff identity should gain operational access after polling/refetch; no new signup. Verify database status active.
+4. Staff sees members/subscriptions only as granted, not Finances/Reports/Employees/owner panel. Direct /finance and /admin show access denied. Authenticated GET /api/finance/transactions, /api/finance/reports, /api/club/employees, /api/club/payroll, /api/subscriptions and /api/members/<existing>/financials all return 403, including a fake x-role:admin header. Non-financial GET /api/club/operations/subscriptions succeeds and JSON must contain NO priceFils/paidFils/discountFils/amountFils/balanceFils.
+5. Owner grants ONLY `reports.view=true` override to this staff in the UI and saves. Same staff after poll can read /reports and GET report, but has no export/print buttons. GET /api/finance/reports?format=csv returns403. /finance/transactions still403. Reload/logout-programmatic-sign-in same user: approved status/permission persist.
+6. Owner suspends fixture in UI. Staff session must stop all club APIs and show suspended, not keep data cached. Owner reactivates, then rejects fixture with authorized PATCH if UI has no reject for active users; verify rejected user cannot access records. Return fixture to suspended at end so no extra access remains.
+7. Verify owner cannot modify its own role/status or set isOwner through the admin users PATCH (403/409/400), and owner still accesses all data.
+
+DB tables: club_users(id,clerk_user_id,email,display_name,role,status,is_owner,permission_overrides jsonb), club_roles(name,label,built_in), club_role_permissions(role_name,permission_name), audit_log(actor_id,action,entity_type,entity_id,details). Users API GET/PATCH /api/club/admin/users/:id. Override catalog in GET /api/club/admin/roles. Preserve existing accounts and business data.
+
+Read `src/admin/AdminPage.tsx`, `src/App.tsx`, `src/authz.ts` in artifacts/club-manager and backend routes/admin.ts for labels/contracts. Test at desktop and one mobile viewport; provide screenshots of owner panel and access-denied/waiting state. Do not send WhatsApp, restore business backups, or operate on real financial records.

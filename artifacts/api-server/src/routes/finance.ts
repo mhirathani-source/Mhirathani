@@ -45,6 +45,10 @@ import {
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { requireAdmin, requireClubUser } from "../middlewares/clubAuth";
+import { isIndependentCashMovement, transactionCash } from "../lib/cashLedger";
+import { readClubSettings } from "../lib/clubSettings";
+import { csv } from "./admin";
+import { MembershipError } from "../lib/membership";
 
 const router: IRouter = Router();
 const JORDAN_TIME_ZONE = "Asia/Amman";
@@ -240,7 +244,10 @@ router.patch("/finance/transactions/:id", requireClubUser, requireAdmin, async (
   const [current] = await db.select().from(financialTransactionsTable)
     .where(eq(financialTransactionsTable.id, params.data.id)).limit(1);
   if (!current) { res.status(404).json({ error: "الحركة غير موجودة" }); return; }
-  if (current.description.startsWith("صرف راتب |")) {
+  if (current.reversed || current.reversalOfId) {
+    res.status(409).json({ error: "الحركة معكوسة أو قيد عكس؛ لا يمكن تعديلها، ويمكن تسجيل حركة تصحيح جديدة" }); return;
+  }
+  if (current.description.startsWith("صرف راتب |") || current.description.startsWith("راتب ")) {
     res.status(409).json({ error: "حركة صرف الراتب مرتبطة بسجل الرواتب ولا يمكن تعديلها منفردة" }); return;
   }
   const kind = body.data.kind ?? current.kind;
@@ -264,6 +271,9 @@ router.patch("/finance/transactions/:id", requireClubUser, requireAdmin, async (
   };
   if (changes.transactionDate && !isValidDate(changes.transactionDate)) { res.status(400).json({ error: "تاريخ الحركة غير صحيح" }); return; }
   const row = await db.transaction(async (trx) => {
+    const [locked] = await trx.select().from(financialTransactionsTable).where(eq(financialTransactionsTable.id,current.id)).for("update");
+    if(!locked || locked.reversed || locked.reversalOfId) throw new MembershipError(409,"الحركة حُذفت أو عُكست بالتزامن؛ حدّث القائمة");
+    if (["amountFils","method","kind","categoryId","memberId","description","transactionDate"].some(field => (locked as Record<string,unknown>)[field] !== (current as Record<string,unknown>)[field])) throw new MembershipError(409,"عُدلت الحركة من جلسة أخرى؛ أعد تحميل بياناتها قبل الحفظ");
     const [updated] = await trx.update(financialTransactionsTable).set(changes)
       .where(eq(financialTransactionsTable.id, current.id)).returning();
     await logAudit(trx, req.clubUser!.clerkUserId, "finance_transaction.updated", "financial_transaction", current.id, {
@@ -401,7 +411,13 @@ router.get("/finance/reports", requireClubUser, async (req, res): Promise<void> 
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
   const requestedDate = dateString(query.data.date);
   if (!isValidDate(requestedDate)) { res.status(400).json({ error: "تاريخ التقرير غير صحيح" }); return; }
-  const { fromDate, toDate } = getPeriodRange(query.data.period, requestedDate);
+  let { fromDate, toDate } = getPeriodRange(query.data.period, requestedDate);
+  if (query.data.period === "year") {
+    const { financialYearStartMonth } = await readClubSettings();
+    const year = Number(requestedDate.slice(0,4)) - (Number(requestedDate.slice(5,7)) < financialYearStartMonth ? 1 : 0);
+    fromDate = `${year}-${String(financialYearStartMonth).padStart(2,"0")}-01`;
+    toDate = new Date(Date.UTC(year+1, financialYearStartMonth-1, 0,12)).toISOString().slice(0,10);
+  }
   const transactionRows = await db.select().from(financialTransactionsTable)
     .where(and(gte(financialTransactionsTable.transactionDate, fromDate), lte(financialTransactionsTable.transactionDate, toDate)))
     .orderBy(desc(financialTransactionsTable.transactionDate), desc(financialTransactionsTable.createdAt));
@@ -471,15 +487,14 @@ router.get("/finance/reports", requireClubUser, async (req, res): Promise<void> 
     })),
     ...allCashTransactions.map((transaction) => ({
       id: `transaction:${transaction.id}`,
-      direction: transaction.kind === "income" ? "in" as const : "out" as const,
-      amountFils: transaction.amountFils,
+      ...transactionCash(transaction),
       description: transaction.description,
       referenceType: "financial_transaction",
       referenceId: transaction.id,
       createdBy: transaction.createdBy,
       createdAt: new Date(`${transaction.transactionDate}T12:00:00.000Z`).toISOString(),
     })),
-    ...allAdjustments.map((movement) => ({
+    ...allAdjustments.filter(isIndependentCashMovement).map((movement) => ({
       id: `adjustment:${movement.id}`,
       direction: movement.direction === "in" ? "in" as const : "out" as const,
       amountFils: movement.amountFils,
@@ -494,7 +509,7 @@ router.get("/finance/reports", requireClubUser, async (req, res): Promise<void> 
     .filter((movement) => jordanDate(new Date(movement.createdAt)) <= toDate)
     .reduce((sum, movement) => sum + (movement.direction === "in" ? movement.amountFils : -movement.amountFils), 0);
 
-  res.json(GetFinancePeriodReportResponse.parse({
+  const report = GetFinancePeriodReportResponse.parse({
     period: query.data.period,
     fromDate,
     toDate,
@@ -506,7 +521,17 @@ router.get("/finance/reports", requireClubUser, async (req, res): Promise<void> 
     incomeByCategory: [...incomeTotals.values()].filter((item) => item.amountFils !== 0),
     expenseByCategory: [...expenseTotals.values()].filter((item) => item.amountFils !== 0),
     transactions: transactionViews,
-  }));
+  });
+  if (req.query.format === "csv") {
+    const summary = [
+      { البيان:"بداية الفترة", القيمة:fromDate }, { البيان:"نهاية الفترة", القيمة:toDate },
+      { البيان:"الإيرادات بالفلس", القيمة:report.incomeFils }, { البيان:"المصاريف بالفلس", القيمة:report.expenseFils },
+      { البيان:"صافي النتيجة بالفلس", القيمة:report.netFils }, { البيان:"الرواتب المستحقة بالفلس", القيمة:report.payrollOutstandingFils },
+      { البيان:"رصيد الصندوق بالفلس", القيمة:report.cashBalanceFils },
+    ];
+    res.attachment(`finance-${fromDate}-${toDate}.csv`).type("text/csv").send(csv(summary)); return;
+  }
+  res.json(report);
 });
 
 router.get("/finance/cash", requireClubUser, async (_req, res): Promise<void> => {
@@ -520,11 +545,11 @@ router.get("/finance/cash", requireClubUser, async (_req, res): Promise<void> =>
       referenceType: "subscription_payment", referenceId: row.id, createdBy: row.createdBy, createdAt: row.createdAt.toISOString(),
     })),
     ...transactions.map((row) => ({
-      id: `transaction:${row.id}`, direction: row.kind === "income" ? "in" : "out", amountFils: row.amountFils,
+      id: `transaction:${row.id}`, ...transactionCash(row),
       description: row.description, referenceType: "financial_transaction", referenceId: row.id,
       createdBy: row.createdBy, createdAt: new Date(`${row.transactionDate}T12:00:00.000Z`).toISOString(),
     })),
-    ...adjustments.map((row) => ({
+    ...adjustments.filter(isIndependentCashMovement).map((row) => ({
       id: `adjustment:${row.id}`, direction: row.direction, amountFils: row.amountFils, description: row.description,
       referenceType: row.referenceType, referenceId: row.referenceId, createdBy: row.createdBy, createdAt: row.createdAt.toISOString(),
     })),

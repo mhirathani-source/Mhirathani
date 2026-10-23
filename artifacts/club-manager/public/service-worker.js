@@ -3,7 +3,7 @@ const CACHE = "prime-academy-public-v1";
 const BASE = new URL("./", self.location.href);
 const urlFor = path => new URL(path, BASE).href;
 const PUBLIC = ["offline.html", "logo.svg", "favicon.svg", "manifest.json", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"].map(urlFor);
-const MAIN_ROUTES = new Set(["", "download", "app", "dashboard", "members", "subscriptions", "plans", "finance", "reports", "employees", "payroll", "cash", "attendance", "reminders", "whatsapp", "settings", "sign-in", "sign-up"]);
+const MAIN_ROUTES = new Set(["", "download", "app", "dashboard", "members", "subscriptions", "plans", "finance", "reports", "employees", "payroll", "cash", "attendance", "reminders", "whatsapp", "settings", "admin", "account", "receipt", "sign-in", "sign-up"]);
 async function offlinePage() {
   const offline = await caches.match(urlFor("offline.html"));
   return offline || new Response("غير متصل بالإنترنت", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });

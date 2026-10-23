@@ -5,12 +5,16 @@
  * Club membership and finance management API
  * OpenAPI spec version: 0.1.0
  */
-import type { ClubSessionRole } from './clubSessionRole';
+import type { ClubSessionStatus } from './clubSessionStatus';
 
 export interface ClubSession {
   userId: string;
   email: string;
   /** @nullable */
-  role: ClubSessionRole;
+  role: string | null;
   setupRequired: boolean;
+  status: ClubSessionStatus;
+  isOwner: boolean;
+  permissions: string[];
+  pendingCount: number;
 }

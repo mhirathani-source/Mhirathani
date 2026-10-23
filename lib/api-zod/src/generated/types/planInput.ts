@@ -19,4 +19,5 @@ export interface PlanInput {
   durationDays: number;
   /** @minimum 0 */
   priceFils: number;
+  active?: boolean;
 }
