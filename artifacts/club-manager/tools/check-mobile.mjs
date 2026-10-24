@@ -7,12 +7,20 @@ const root=resolve(import.meta.dirname,"..");
 const read=path=>readFile(resolve(root,path),"utf8");
 const manifest=JSON.parse(await read("public/manifest.json"));
 assert.equal(manifest.display,"standalone");assert.equal(manifest.dir,"rtl");assert.equal(manifest.lang,"ar");
+assert.equal(manifest.name,"Prime Boxing Academy");assert.equal(manifest.short_name,"Prime");
+assert.equal(manifest.theme_color,"#FFC107");
 assert.equal(manifest.start_url,"./");assert.equal(manifest.scope,"./");
 for(const size of [192,512]){
   assert.ok(manifest.icons.find(icon=>icon.sizes===`${size}x${size}`));
   const png=await readFile(resolve(root,`public/icons/icon-${size}.png`));
   assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);
 }
+const publicSite={};
+vm.runInNewContext(ts.transpileModule(await read("src/lib/public-site.ts"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{
+  exports:publicSite,URL,window:{location:{protocol:"https:",origin:"https://Prime1academy.replit.app"}},
+});
+assert.equal(publicSite.securePortalUrl(),"https://prime1academy.replit.app/");
+assert.equal(publicSite.publicDownloadUrl(),"https://prime1academy.replit.app/download");
 const callbacks=new Map();
 const exported={};
 vm.runInNewContext(ts.transpileModule(await read("src/lib/install.ts"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{
@@ -37,4 +45,4 @@ for(const path of ["api/club/finance/report","api/club/session","__clerk/v1/clie
 assert.match(await read("capacitor.config.ts"),/appId:\s*'com\.primeboxingacademy\.app'/);
 assert.match(await read("capacitor.config.ts"),/url:\s*'https:\/\/prime-boxing-academy\.replit\.app\/'/);
 assert.doesNotMatch(await read("src/main.tsx"),/NativePortal/);
-console.log("Mobile checks passed: manifest, PNG dimensions, early install prompt, private-route isolation, hosted native configuration.");
+console.log("Mobile checks passed: manifest, PNG dimensions, runtime HTTPS links, early install prompt, private-route isolation, hosted native configuration.");
