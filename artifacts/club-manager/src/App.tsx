@@ -12,7 +12,7 @@ import {
   useListCashMovements,
   useCreatePlan, useGetClubDashboard, useGetClubSession, useGetMember,
   useGetPaymentReceipt, useListPlans, } from "@workspace/api-client-react";
-import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound, Menu, X, ShieldCheck } from "lucide-react";
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { MembersPage, SubscriptionsPage, SubscriptionManager, MemberProfileTools } from "./MembershipPages";
 import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
@@ -106,26 +106,66 @@ function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem("prime-sidebar-collapsed") === "true"; } catch { return false; }
   });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 720px)").matches);
   useEffect(() => {
     try { localStorage.setItem("prime-sidebar-collapsed", String(collapsed)); } catch { /* storage may be unavailable */ }
   }, [collapsed]);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 720px)");
+    const update = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setMobileOpen(false);
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
   const clubSettings=useQuery({queryKey:["clubSettings","operational"],queryFn:()=>clubApi<{clubName:string}>("/club/operations/settings"),enabled:session.data?.status==="active"});
   const clubName=clubSettings.data?.clubName||"Prime Boxing Academy";
   const navItems = allNavItems.filter(item => !session.isError && session.data?.status === "active" && (item.href === "/admin" ? isOwner : item.href === "/finance" ? item.permissions.some(p => can(p)) : can(...item.permissions)))
     .map(item => item.href === "/admin" && session.data?.pendingCount ? { ...item, title: `${item.title} (${session.data.pendingCount} طلب)` } : item);
-  return <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`} dir="rtl">
-    <aside className="sidebar">
-      <Link href="/dashboard" className="brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span className="brand-copy" style={{overflowWrap:"anywhere"}}>{clubName}<small>إدارة الأكاديمية</small></span></Link>
+  const shellClass = `app-shell ${collapsed && !isMobile ? "sidebar-collapsed" : ""} ${mobileOpen ? "mobile-sidebar-open" : ""}`;
+  return <div className={shellClass} dir="rtl">
+    {isMobile && mobileOpen && <button type="button" className="sidebar-scrim" aria-label="إغلاق القائمة الجانبية" onClick={() => setMobileOpen(false)} />}
+    <aside id="primary-sidebar" className="sidebar" aria-label="القائمة الرئيسية" aria-hidden={isMobile ? !mobileOpen : undefined} inert={isMobile && !mobileOpen}>
+      <div className="sidebar-brand-row">
+        <Link href="/dashboard" className="brand" aria-label="Prime Boxing Academy — لوحة التحكم" onClick={() => setMobileOpen(false)}>
+          <span className="sidebar-brand-frame"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="" /></span>
+          <span className="brand-copy"><strong dir="ltr">PRIME BOXING ACADEMY</strong><small dir="ltr">Academy Management</small></span>
+        </Link>
+        <button type="button" className="sidebar-mobile-close" aria-label="إغلاق القائمة" onClick={() => setMobileOpen(false)}><X size={18}/></button>
+      </div>
       <p className="nav-label">القائمة الرئيسية</p>
-      <nav>{navItems.map(({href,title,icon:Icon})=>{const active=location===href||(href==="/members"&&location.startsWith("/members/"));return <Link key={href} href={href} title={title} aria-label={title} aria-current={active?"page":undefined} className={`nav-link ${active?"active":""}`}><Icon size={18}/><span>{title}</span></Link>;})}</nav>
+      <nav className="sidebar-nav">{navItems.map(({href,title,icon:Icon},index)=>{const active=location===href||(href==="/members"&&location.startsWith("/members/"));return <Link key={href} href={href} title={title} aria-label={title} aria-current={active?"page":undefined} className={`nav-link ${active?"active":""}`} onClick={()=>setMobileOpen(false)}><span className="sidebar-link-icon"><Icon size={18}/></span><span className="sidebar-link-label">{title}</span><span className="sidebar-link-index">{String(index+1).padStart(2,"0")}</span></Link>;})}</nav>
       <div className="sidebar-bottom">
-        <div className="profile"><div className="avatar">{user?.firstName?.slice(0,1)||"م"}</div><div><strong>{user?.fullName||"حساب الأكاديمية"}</strong><small>{user?.primaryEmailAddress?.emailAddress}</small></div></div>
-        <Link className="nav-link" href="/account" title="إعدادات حسابي" aria-label="إعدادات حسابي"><UserRound size={18}/><span>إعدادات حسابي</span></Link>
+        <div className="sidebar-account">
+          <div className="avatar">{user?.imageUrl ? <img src={user.imageUrl} alt=""/> : user?.firstName?.slice(0,1)||"م"}</div>
+          <div className="sidebar-account-copy"><strong>{user?.fullName||"حساب الأكاديمية"}</strong><small><ShieldCheck size={12}/>{isOwner?"مدير الأكاديمية":"فريق الأكاديمية"}</small></div>
+          <span className="sidebar-online" aria-label="متصل"/>
+        </div>
+        <Link className="nav-link sidebar-account-link" href="/account" title="إعدادات حسابي" aria-label="إعدادات حسابي" onClick={()=>setMobileOpen(false)}><span className="sidebar-link-icon"><UserRound size={18}/></span><span className="sidebar-link-label">إعدادات حسابي</span></Link>
         <button className="nav-link sidebar-toggle" type="button" data-testid="toggle-sidebar" aria-label={collapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"} aria-expanded={!collapsed} onClick={() => setCollapsed(v => !v)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>طي القائمة</span></button>
-        <button className="nav-link logout" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/><span>تسجيل الخروج</span></button>
+        <button className="nav-link logout sidebar-logout" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={()=>{setMobileOpen(false);void signOut({redirectUrl:basePath||"/"});}}><span className="sidebar-link-icon"><LogOut size={18}/></span><span className="sidebar-link-label">تسجيل الخروج</span></button>
       </div>
     </aside>
-    <main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-tools"><span className="topbar-user">بوابة إدارة الأكاديمية</span><ThemeToggle/></div></header><section className="page-content">{children}</section></main>
+    <main className="main-area"><header className="topbar"><div className="topbar-leading"><button type="button" className="sidebar-mobile-trigger" aria-label={mobileOpen?"إغلاق القائمة":"فتح القائمة"} aria-expanded={mobileOpen} aria-controls="primary-sidebar" onClick={() => setMobileOpen(v=>!v)}><Menu size={19}/></button><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-tools"><span className="topbar-user">بوابة إدارة الأكاديمية</span><ThemeToggle/></div></header><section className="page-content">{children}</section></main>
     <nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav>
   </div>;
 }
