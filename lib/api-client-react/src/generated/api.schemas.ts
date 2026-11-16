@@ -31,6 +31,47 @@ export interface ClubSession {
   pendingCount: number;
 }
 
+export interface ClubDashboardMonth {
+  /** @pattern ^\d{4}-\d{2}$ */
+  month: string;
+  incomeFils: number;
+  expensesFils: number;
+  netFils: number;
+  newSubscriptions: number;
+}
+
+export interface ClubDashboardPlanDistribution {
+  planId: number;
+  planName: string;
+  activeSubscriptions: number;
+}
+
+export interface ClubDashboardRenewalRate {
+  periodMonths: number;
+  eligibleSubscriptions: number;
+  renewedSubscriptions: number;
+  /** @nullable */
+  ratePercent: number | null;
+}
+
+export interface ClubDashboardSubscriptionAlert {
+  subscriptionId: number;
+  memberId: number;
+  memberName: string;
+  phone: string;
+  planName: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
+  daysRemaining: number;
+}
+
+export interface ClubDashboardOutstandingMember {
+  memberId: number;
+  memberName: string;
+  phone: string;
+  outstandingFils: number;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -48,14 +89,46 @@ export interface Member {
   active: boolean;
 }
 
+export interface ClubDashboardRecentRenewal {
+  subscriptionId: number;
+  memberId: number;
+  memberName: string;
+  planName: string;
+  createdAt: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+}
+
+export interface ClubDashboardRecentPayment {
+  paymentId: number;
+  memberId: number;
+  memberName: string;
+  amountFils: number;
+  kind: string;
+  method: string;
+  createdAt: string;
+}
+
 export interface ClubDashboard {
+  totalMembers: number;
   activeMembers: number;
   endingSoon: number;
+  endingWithin7Days: number;
   expiredSubscriptions: number;
   collectedFils: number;
   outstandingFils: number;
   monthlyCollectedFils: number;
+  totalPaymentOperations: number;
+  newSubscriptionsThisMonth: number;
+  monthlySeries: ClubDashboardMonth[];
+  planDistribution: ClubDashboardPlanDistribution[];
+  renewalRate: ClubDashboardRenewalRate;
+  expiringSubscriptions: ClubDashboardSubscriptionAlert[];
+  expiredSubscriptionAlerts: ClubDashboardSubscriptionAlert[];
+  outstandingMembers: ClubDashboardOutstandingMember[];
   recentMembers: Member[];
+  recentRenewals: ClubDashboardRecentRenewal[];
+  recentPayments: ClubDashboardRecentPayment[];
 }
 
 export interface MemberInput {
@@ -806,17 +879,17 @@ export type GetClubOverview200 = {
 };
 
 export type ListMembersParams = {
-search?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
+  search?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
 };
 
 export type ListSubscriptionsParams = {
-status?: ListSubscriptionsStatus;
-search?: string;
+  status?: ListSubscriptionsStatus;
+  search?: string;
 };
 
 export type ListSubscriptionsStatus = typeof ListSubscriptionsStatus[keyof typeof ListSubscriptionsStatus];
@@ -831,24 +904,24 @@ export const ListSubscriptionsStatus = {
 } as const;
 
 export type ListFinanceTransactionsParams = {
-from?: string;
-to?: string;
+  from?: string;
+  to?: string;
 };
 
 export type GetFinanceReportParams = {
-from: string;
-to: string;
+  from: string;
+  to: string;
 };
 
 export type ListCashMovementsParams = {
-from?: string;
-to?: string;
+  from?: string;
+  to?: string;
 };
 
 export type ListFinanceTransactionsV2Params = {
-startDate?: string;
-endDate?: string;
-kind?: ListFinanceTransactionsV2Kind;
+  startDate?: string;
+  endDate?: string;
+  kind?: ListFinanceTransactionsV2Kind;
 };
 
 export type ListFinanceTransactionsV2Kind = typeof ListFinanceTransactionsV2Kind[keyof typeof ListFinanceTransactionsV2Kind];
@@ -860,8 +933,8 @@ export const ListFinanceTransactionsV2Kind = {
 } as const;
 
 export type GetFinancePeriodReportParams = {
-period: GetFinancePeriodReportPeriod;
-date: string;
+  period: GetFinancePeriodReportPeriod;
+  date: string;
 };
 
 export type GetFinancePeriodReportPeriod = typeof GetFinancePeriodReportPeriod[keyof typeof GetFinancePeriodReportPeriod];

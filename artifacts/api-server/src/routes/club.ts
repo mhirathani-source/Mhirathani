@@ -52,6 +52,7 @@ import { addSubscriptionPayment as addPayment, buildMemberSearch, deleteUnlinked
 import { effectivePermissions } from "../lib/permissions";
 import { readClubSettings } from "../lib/clubSettings";
 import { isIndependentCashMovement, signedPayment } from "../lib/cashLedger";
+import { buildClubDashboard } from "../lib/dashboardMetrics";
 
 const router: IRouter = Router();
 const JORDAN_TIME_ZONE = "Asia/Amman";
@@ -141,27 +142,21 @@ router.get("/members/:id/profile", requireClubUser, async (req, res): Promise<vo
 });
 
 router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> => {
-  const today = jordanDate();
-  const soon = addDays(today, 2);
-  const members = await db.select().from(membersTable);
-  const subscriptions = await db.select().from(subscriptionsTable);
-  const payments = await db.select().from(paymentsTable);
-  const transactions = await db.select().from(financialTransactionsTable);
-  const expenses = transactions.filter(t=>t.kind==="expense").reduce((sum,t)=>sum+t.amountFils,0);
-  const activeMembers = new Set(subscriptions.filter((s) => effectiveStatus(s) === "active" && members.some((m) => m.id === s.memberId && m.active)).map((s) => s.memberId)).size;
-  const endingSoon = subscriptions.filter((s) => effectiveStatus(s) === "active" && s.endDate >= today && s.endDate <= soon).length;
-  const expiredSubscriptions = subscriptions.filter((s) => effectiveStatus(s) === "expired").length;
-  const outstandingFils = subscriptions.reduce((total, s) => {
-    const paid = payments.filter((p) => p.subscriptionId === s.id).reduce((sum, p) => sum + signedPayment(p), 0);
-    return total + Math.max(0, s.priceFils - s.discountFils - paid);
-  }, 0);
-  const monthPrefix = today.slice(0, 7);
-  const collectedFils = payments.reduce((total, payment) => total + signedPayment(payment), 0)
-    + transactions.filter(t=>t.kind==="income").reduce((sum,t)=>sum+t.amountFils,0);
-  const monthlyCollectedFils = payments.filter((p) => jordanDate(p.createdAt).slice(0, 7) === monthPrefix).reduce((total, p) => total + signedPayment(p), 0)
-    + transactions.filter(t=>t.kind==="income"&&t.transactionDate.startsWith(monthPrefix)).reduce((sum,t)=>sum+t.amountFils,0);
-  const recentMembers = [...members].sort((a, b) => b.joinedAt.getTime() - a.joinedAt.getTime()).slice(0, 5).map((m) => ({ ...m, joinedAt: m.joinedAt.toISOString() }));
-  res.json(GetClubDashboardResponse.parse({ activeMembers, endingSoon, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, recentMembers }));
+  const [members, subscriptions, payments, transactions, plans] = await Promise.all([
+    db.select().from(membersTable),
+    db.select().from(subscriptionsTable),
+    db.select().from(paymentsTable),
+    db.select().from(financialTransactionsTable),
+    db.select({ id: plansTable.id, name: plansTable.name }).from(plansTable),
+  ]);
+  res.json(GetClubDashboardResponse.parse(buildClubDashboard({
+    today: jordanDate(),
+    members,
+    subscriptions,
+    payments,
+    transactions,
+    plans,
+  })));
 });
 
 router.get("/members", requireClubUser, async (req, res): Promise<void> => {

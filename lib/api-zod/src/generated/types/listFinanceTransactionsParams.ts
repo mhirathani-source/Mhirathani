@@ -7,6 +7,6 @@
  */
 
 export type ListFinanceTransactionsParams = {
-from?: Date;
-to?: Date;
+  from?: Date;
+  to?: Date;
 };

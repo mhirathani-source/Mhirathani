@@ -5,14 +5,33 @@
  * Club membership and finance management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ClubDashboardMonth } from './clubDashboardMonth';
+import type { ClubDashboardOutstandingMember } from './clubDashboardOutstandingMember';
+import type { ClubDashboardPlanDistribution } from './clubDashboardPlanDistribution';
+import type { ClubDashboardRecentPayment } from './clubDashboardRecentPayment';
+import type { ClubDashboardRecentRenewal } from './clubDashboardRecentRenewal';
+import type { ClubDashboardRenewalRate } from './clubDashboardRenewalRate';
+import type { ClubDashboardSubscriptionAlert } from './clubDashboardSubscriptionAlert';
 import type { Member } from './member';
 
 export interface ClubDashboard {
+  totalMembers: number;
   activeMembers: number;
   endingSoon: number;
+  endingWithin7Days: number;
   expiredSubscriptions: number;
   collectedFils: number;
   outstandingFils: number;
   monthlyCollectedFils: number;
+  totalPaymentOperations: number;
+  newSubscriptionsThisMonth: number;
+  monthlySeries: ClubDashboardMonth[];
+  planDistribution: ClubDashboardPlanDistribution[];
+  renewalRate: ClubDashboardRenewalRate;
+  expiringSubscriptions: ClubDashboardSubscriptionAlert[];
+  expiredSubscriptionAlerts: ClubDashboardSubscriptionAlert[];
+  outstandingMembers: ClubDashboardOutstandingMember[];
   recentMembers: Member[];
+  recentRenewals: ClubDashboardRecentRenewal[];
+  recentPayments: ClubDashboardRecentPayment[];
 }

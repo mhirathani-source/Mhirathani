@@ -8,6 +8,6 @@
 import type { GetFinancePeriodReportPeriod } from './getFinancePeriodReportPeriod';
 
 export type GetFinancePeriodReportParams = {
-period: GetFinancePeriodReportPeriod;
-date: Date;
+  period: GetFinancePeriodReportPeriod;
+  date: Date;
 };

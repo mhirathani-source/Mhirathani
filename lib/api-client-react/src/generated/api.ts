@@ -82,6 +82,26 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+const getHeaders = (...sources: (RequestInit['headers'] | Record<string, string | undefined>)[]) => {
+  const seen = new Set<string>();
+  const layers: [string, string | readonly string[]][][] = [];
+  for (const source of sources.reverse()) {
+    if (!source) continue;
+    const entries = source instanceof Headers
+      ? source.entries()
+      : Symbol.iterator in source
+        ? Array.from(source as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string])
+        : Object.entries<string | readonly string[] | undefined>(source);
+    const layer: [string, string | readonly string[]][] = [];
+    for (const [name, value] of entries) {
+      if (value !== undefined && !seen.has(name.toLowerCase())) layer.push([name, value]);
+    }
+    for (const [name] of layer) seen.add(name.toLowerCase());
+    layers.push(layer);
+  }
+  return Object.fromEntries(layers.reverse().flat()) as Extract<RequestInit['headers'], Record<string, unknown>>;
+};
+
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
@@ -153,10 +173,7 @@ export type GetClubOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof g
 export type GetClubOverviewQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Non-financial operational overview for club staff
- */
-
+/** @summary Non-financial operational overview for club staff */
 export function useGetClubOverview<TData = Awaited<ReturnType<typeof getClubOverview>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClubOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -230,10 +247,7 @@ export type GetMemberProfileQueryResult = NonNullable<Awaited<ReturnType<typeof 
 export type GetMemberProfileQueryError = ErrorType<void>
 
 
-/**
- * @summary Basic member profile without subscriptions or financial history
- */
-
+/** @summary Basic member profile without subscriptions or financial history */
 export function useGetMemberProfile<TData = Awaited<ReturnType<typeof getMemberProfile>>, TError = ErrorType<void>>(
  id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -309,9 +323,9 @@ export type HealthCheckQueryError = ErrorType<unknown>
 
 
 /**
+ * Returns server health status
  * @summary Health check
  */
-
 export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -385,10 +399,7 @@ export type GetClubSessionQueryResult = NonNullable<Awaited<ReturnType<typeof ge
 export type GetClubSessionQueryError = ErrorType<void>
 
 
-/**
- * @summary Get current club user and access status
- */
-
+/** @summary Get current club user and access status */
 export function useGetClubSession<TData = Awaited<ReturnType<typeof getClubSession>>, TError = ErrorType<void>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClubSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -462,10 +473,7 @@ export type GetClubDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof 
 export type GetClubDashboardQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get operational and financial dashboard
- */
-
+/** @summary Get operational and financial dashboard */
 export function useGetClubDashboard<TData = Awaited<ReturnType<typeof getClubDashboard>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClubDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -546,10 +554,7 @@ export type ListMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listM
 export type ListMembersQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Search and list members
- */
-
+/** @summary Search and list members */
 export function useListMembers<TData = Awaited<ReturnType<typeof listMembers>>, TError = ErrorType<unknown>>(
  params?: ListMembersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -581,25 +586,11 @@ export const getCreateMemberUrl = () => {
  */
 export const createMember = async (memberInput: MemberInput, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Member>(getCreateMemberUrl(),
+  return customFetch<Member>(getCreateMemberUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(memberInput)
   }
 );}
@@ -642,9 +633,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateMemberMutationError = ErrorType<unknown>
     export type CreateMemberMutationVariables = {data: BodyType<MemberInput>}
 
-    /**
- * @summary Add a member
- */
+    /** @summary Add a member */
 export const useCreateMember = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMember>>, TError,CreateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -716,9 +705,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteMemberMutationError = ErrorType<void | MemberDeleteConflict>
     export type DeleteMemberMutationVariables = {id: number}
 
-    /**
- * @summary Permanently delete an unlinked member (admin only)
- */
+    /** @summary Permanently delete an unlinked member (admin only) */
 export const useDeleteMember = <TError = ErrorType<void | MemberDeleteConflict>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMember>>, TError,DeleteMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -785,10 +772,7 @@ export type GetMemberQueryResult = NonNullable<Awaited<ReturnType<typeof getMemb
 export type GetMemberQueryError = ErrorType<void>
 
 
-/**
- * @summary Get member profile, subscription history, and payments
- */
-
+/** @summary Get member profile, subscription history, and payments */
 export function useGetMember<TData = Awaited<ReturnType<typeof getMember>>, TError = ErrorType<void>>(
  id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMember>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -821,25 +805,11 @@ export const getUpdateMemberUrl = (id: number,) => {
 export const updateMember = async (id: number,
     memberUpdate: MemberUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Member>(getUpdateMemberUrl(id),
+  return customFetch<Member>(getUpdateMemberUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(memberUpdate)
   }
 );}
@@ -882,9 +852,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateMemberMutationError = ErrorType<unknown>
     export type UpdateMemberMutationVariables = {id: number;data: BodyType<MemberUpdate>}
 
-    /**
- * @summary Update a member
- */
+    /** @summary Update a member */
 export const useUpdateMember = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMember>>, TError,UpdateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -951,10 +919,7 @@ export type ListPlansQueryResult = NonNullable<Awaited<ReturnType<typeof listPla
 export type ListPlansQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List membership plans
- */
-
+/** @summary List membership plans */
 export function useListPlans<TData = Awaited<ReturnType<typeof listPlans>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -986,25 +951,11 @@ export const getCreatePlanUrl = () => {
  */
 export const createPlan = async (planInput: PlanInput, options?: Parameters<typeof customFetch>[1]): Promise<Plan> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Plan>(getCreatePlanUrl(),
+  return customFetch<Plan>(getCreatePlanUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(planInput)
   }
 );}
@@ -1047,9 +998,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePlanMutationError = ErrorType<unknown>
     export type CreatePlanMutationVariables = {data: BodyType<PlanInput>}
 
-    /**
- * @summary Create a membership plan
- */
+    /** @summary Create a membership plan */
 export const useCreatePlan = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPlan>>, TError,CreatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1075,25 +1024,11 @@ export const getUpdatePlanUrl = (id: number,) => {
 export const updatePlan = async (id: number,
     planUpdate: PlanUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Plan> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Plan>(getUpdatePlanUrl(id),
+  return customFetch<Plan>(getUpdatePlanUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(planUpdate)
   }
 );}
@@ -1136,9 +1071,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdatePlanMutationError = ErrorType<unknown>
     export type UpdatePlanMutationVariables = {id: number;data: BodyType<PlanUpdate>}
 
-    /**
- * @summary Update a membership plan
- */
+    /** @summary Update a membership plan */
 export const useUpdatePlan = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlan>>, TError,UpdatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1212,10 +1145,7 @@ export type ListSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof
 export type ListSubscriptionsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List subscriptions
- */
-
+/** @summary List subscriptions */
 export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
  params?: ListSubscriptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -1247,25 +1177,11 @@ export const getCreateSubscriptionUrl = () => {
  */
 export const createSubscription = async (subscriptionInput: SubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Subscription>(getCreateSubscriptionUrl(),
+  return customFetch<Subscription>(getCreateSubscriptionUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(subscriptionInput)
   }
 );}
@@ -1308,9 +1224,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateSubscriptionMutationError = ErrorType<unknown>
     export type CreateSubscriptionMutationVariables = {data: BodyType<SubscriptionInput>}
 
-    /**
- * @summary Start a subscription for a member
- */
+    /** @summary Start a subscription for a member */
 export const useCreateSubscription = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,CreateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1336,25 +1250,11 @@ export const getUpdateSubscriptionUrl = (id: number,) => {
 export const updateSubscription = async (id: number,
     subscriptionUpdate: SubscriptionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Subscription>(getUpdateSubscriptionUrl(id),
+  return customFetch<Subscription>(getUpdateSubscriptionUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(subscriptionUpdate)
   }
 );}
@@ -1397,9 +1297,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateSubscriptionMutationError = ErrorType<void>
     export type UpdateSubscriptionMutationVariables = {id: number;data: BodyType<SubscriptionUpdate>}
 
-    /**
- * @summary Correct a current subscription without changing its payments (admin only)
- */
+    /** @summary Correct a current subscription without changing its payments (admin only) */
 export const useUpdateSubscription = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,UpdateSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1425,25 +1323,11 @@ export const getActOnSubscriptionUrl = (id: number,) => {
 export const actOnSubscription = async (id: number,
     subscriptionAction: SubscriptionAction, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Subscription>(getActOnSubscriptionUrl(id),
+  return customFetch<Subscription>(getActOnSubscriptionUrl(id),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(subscriptionAction)
   }
 );}
@@ -1486,9 +1370,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ActOnSubscriptionMutationError = ErrorType<unknown>
     export type ActOnSubscriptionMutationVariables = {id: number;data: BodyType<SubscriptionAction>}
 
-    /**
- * @summary Pause, resume, renew, or cancel a subscription
- */
+    /** @summary Pause, resume, renew, or cancel a subscription */
 export const useActOnSubscription = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof actOnSubscription>>, TError,ActOnSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1555,10 +1437,7 @@ export type ListSubscriptionPaymentsQueryResult = NonNullable<Awaited<ReturnType
 export type ListSubscriptionPaymentsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List payments and adjustments for a subscription
- */
-
+/** @summary List payments and adjustments for a subscription */
 export function useListSubscriptionPayments<TData = Awaited<ReturnType<typeof listSubscriptionPayments>>, TError = ErrorType<unknown>>(
  id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptionPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -1591,25 +1470,11 @@ export const getCreateSubscriptionPaymentUrl = (id: number,) => {
 export const createSubscriptionPayment = async (id: number,
     paymentInput: PaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<Payment> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Payment>(getCreateSubscriptionPaymentUrl(id),
+  return customFetch<Payment>(getCreateSubscriptionPaymentUrl(id),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(paymentInput)
   }
 );}
@@ -1652,9 +1517,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateSubscriptionPaymentMutationError = ErrorType<unknown>
     export type CreateSubscriptionPaymentMutationVariables = {id: number;data: BodyType<PaymentInput>}
 
-    /**
- * @summary Record a partial or full payment
- */
+    /** @summary Record a partial or full payment */
 export const useCreateSubscriptionPayment = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPayment>>, TError,CreateSubscriptionPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1721,10 +1584,7 @@ export type GetPaymentReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof
 export type GetPaymentReceiptQueryError = ErrorType<void>
 
 
-/**
- * @summary Get a printable receipt
- */
-
+/** @summary Get a printable receipt */
 export function useGetPaymentReceipt<TData = Awaited<ReturnType<typeof getPaymentReceipt>>, TError = ErrorType<void>>(
  id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -1798,10 +1658,7 @@ export type ListFinanceCategoriesQueryResult = NonNullable<Awaited<ReturnType<ty
 export type ListFinanceCategoriesQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List finance categories
- */
-
+/** @summary List finance categories */
 export function useListFinanceCategories<TData = Awaited<ReturnType<typeof listFinanceCategories>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -1833,25 +1690,11 @@ export const getCreateFinanceCategoryUrl = () => {
  */
 export const createFinanceCategory = async (financeCategoryInput: FinanceCategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<FinanceCategory>(getCreateFinanceCategoryUrl(),
+  return customFetch<FinanceCategory>(getCreateFinanceCategoryUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(financeCategoryInput)
   }
 );}
@@ -1894,9 +1737,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateFinanceCategoryMutationError = ErrorType<unknown>
     export type CreateFinanceCategoryMutationVariables = {data: BodyType<FinanceCategoryInput>}
 
-    /**
- * @summary Create finance category
- */
+    /** @summary Create finance category */
 export const useCreateFinanceCategory = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceCategory>>, TError,CreateFinanceCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -1970,10 +1811,7 @@ export type ListFinanceTransactionsQueryResult = NonNullable<Awaited<ReturnType<
 export type ListFinanceTransactionsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List finance transactions
- */
-
+/** @summary List finance transactions */
 export function useListFinanceTransactions<TData = Awaited<ReturnType<typeof listFinanceTransactions>>, TError = ErrorType<unknown>>(
  params?: ListFinanceTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2005,25 +1843,11 @@ export const getCreateFinanceTransactionUrl = () => {
  */
 export const createFinanceTransaction = async (financeTransactionInput: FinanceTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinanceTransaction> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<FinanceTransaction>(getCreateFinanceTransactionUrl(),
+  return customFetch<FinanceTransaction>(getCreateFinanceTransactionUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(financeTransactionInput)
   }
 );}
@@ -2066,9 +1890,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateFinanceTransactionMutationError = ErrorType<unknown>
     export type CreateFinanceTransactionMutationVariables = {data: BodyType<FinanceTransactionInput>}
 
-    /**
- * @summary Record income or expense
- */
+    /** @summary Record income or expense */
 export const useCreateFinanceTransaction = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceTransaction>>, TError,CreateFinanceTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2142,10 +1964,7 @@ export type GetFinanceReportQueryResult = NonNullable<Awaited<ReturnType<typeof 
 export type GetFinanceReportQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Calculate financial totals and outstanding balances
- */
-
+/** @summary Calculate financial totals and outstanding balances */
 export function useGetFinanceReport<TData = Awaited<ReturnType<typeof getFinanceReport>>, TError = ErrorType<unknown>>(
  params: GetFinanceReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2226,10 +2045,7 @@ export type ListCashMovementsQueryResult = NonNullable<Awaited<ReturnType<typeof
 export type ListCashMovementsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List cash register movements
- */
-
+/** @summary List cash register movements */
 export function useListCashMovements<TData = Awaited<ReturnType<typeof listCashMovements>>, TError = ErrorType<unknown>>(
  params?: ListCashMovementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCashMovements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2303,10 +2119,7 @@ export type ListEmployeesQueryResult = NonNullable<Awaited<ReturnType<typeof lis
 export type ListEmployeesQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List employees
- */
-
+/** @summary List employees */
 export function useListEmployees<TData = Awaited<ReturnType<typeof listEmployees>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2338,25 +2151,11 @@ export const getCreateEmployeeUrl = () => {
  */
 export const createEmployee = async (employeeInput: EmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<Employee> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Employee>(getCreateEmployeeUrl(),
+  return customFetch<Employee>(getCreateEmployeeUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(employeeInput)
   }
 );}
@@ -2399,9 +2198,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateEmployeeMutationError = ErrorType<unknown>
     export type CreateEmployeeMutationVariables = {data: BodyType<EmployeeInput>}
 
-    /**
- * @summary Add employee
- */
+    /** @summary Add employee */
 export const useCreateEmployee = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmployee>>, TError,CreateEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2468,10 +2265,7 @@ export type ListPayrollQueryResult = NonNullable<Awaited<ReturnType<typeof listP
 export type ListPayrollQueryError = ErrorType<unknown>
 
 
-/**
- * @summary List payroll entries
- */
-
+/** @summary List payroll entries */
 export function useListPayroll<TData = Awaited<ReturnType<typeof listPayroll>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayroll>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2503,25 +2297,11 @@ export const getCreatePayrollUrl = () => {
  */
 export const createPayroll = async (payrollInput: PayrollInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEntry> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<PayrollEntry>(getCreatePayrollUrl(),
+  return customFetch<PayrollEntry>(getCreatePayrollUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(payrollInput)
   }
 );}
@@ -2564,9 +2344,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePayrollMutationError = ErrorType<unknown>
     export type CreatePayrollMutationVariables = {data: BodyType<PayrollInput>}
 
-    /**
- * @summary Create a monthly payroll entry
- */
+    /** @summary Create a monthly payroll entry */
 export const useCreatePayroll = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayroll>>, TError,CreatePayrollMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2592,25 +2370,11 @@ export const getPayPayrollUrl = (id: number,) => {
 export const payPayroll = async (id: number,
     payrollPaymentInput: PayrollPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEntry> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<PayrollEntry>(getPayPayrollUrl(id),
+  return customFetch<PayrollEntry>(getPayPayrollUrl(id),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(payrollPaymentInput)
   }
 );}
@@ -2653,9 +2417,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PayPayrollMutationError = ErrorType<unknown>
     export type PayPayrollMutationVariables = {id: number;data: BodyType<PayrollPaymentInput>}
 
-    /**
- * @summary Record a payroll payment
- */
+    /** @summary Record a payroll payment */
 export const usePayPayroll = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payPayroll>>, TError,PayPayrollMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2722,10 +2484,7 @@ export type ListFinanceCategoriesV2QueryResult = NonNullable<Awaited<ReturnType<
 export type ListFinanceCategoriesV2QueryError = ErrorType<unknown>
 
 
-/**
- * @summary List finance categories
- */
-
+/** @summary List finance categories */
 export function useListFinanceCategoriesV2<TData = Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceCategoriesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -2757,25 +2516,11 @@ export const getCreateFinanceCategoryV2Url = () => {
  */
 export const createFinanceCategoryV2 = async (financeCategoryInput: FinanceCategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<FinanceCategory>(getCreateFinanceCategoryV2Url(),
+  return customFetch<FinanceCategory>(getCreateFinanceCategoryV2Url(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(financeCategoryInput)
   }
 );}
@@ -2818,9 +2563,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateFinanceCategoryV2MutationError = ErrorType<unknown>
     export type CreateFinanceCategoryV2MutationVariables = {data: BodyType<FinanceCategoryInput>}
 
-    /**
- * @summary Add a finance category
- */
+    /** @summary Add a finance category */
 export const useCreateFinanceCategoryV2 = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceCategoryV2>>, TError,CreateFinanceCategoryV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2846,25 +2589,11 @@ export const getUpdateFinanceCategoryUrl = (id: number,) => {
 export const updateFinanceCategory = async (id: number,
     financeCategoryUpdate: FinanceCategoryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FinanceCategory> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<FinanceCategory>(getUpdateFinanceCategoryUrl(id),
+  return customFetch<FinanceCategory>(getUpdateFinanceCategoryUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(financeCategoryUpdate)
   }
 );}
@@ -2907,9 +2636,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateFinanceCategoryMutationError = ErrorType<void>
     export type UpdateFinanceCategoryMutationVariables = {id: number;data: BodyType<FinanceCategoryUpdate>}
 
-    /**
- * @summary Rename or deactivate a finance category
- */
+    /** @summary Rename or deactivate a finance category */
 export const useUpdateFinanceCategory = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceCategory>>, TError,UpdateFinanceCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -2983,10 +2710,7 @@ export type ListFinanceTransactionsV2QueryResult = NonNullable<Awaited<ReturnTyp
 export type ListFinanceTransactionsV2QueryError = ErrorType<unknown>
 
 
-/**
- * @summary List income and expense transactions
- */
-
+/** @summary List income and expense transactions */
 export function useListFinanceTransactionsV2<TData = Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError = ErrorType<unknown>>(
  params?: ListFinanceTransactionsV2Params, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceTransactionsV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -3018,25 +2742,11 @@ export const getCreateFinanceTransactionV2Url = () => {
  */
 export const createFinanceTransactionV2 = async (managedFinanceTransactionInput: ManagedFinanceTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedFinanceTransaction> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedFinanceTransaction>(getCreateFinanceTransactionV2Url(),
+  return customFetch<ManagedFinanceTransaction>(getCreateFinanceTransactionV2Url(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(managedFinanceTransactionInput)
   }
 );}
@@ -3079,9 +2789,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateFinanceTransactionV2MutationError = ErrorType<unknown>
     export type CreateFinanceTransactionV2MutationVariables = {data: BodyType<ManagedFinanceTransactionInput>}
 
-    /**
- * @summary Record income or an expense
- */
+    /** @summary Record income or an expense */
 export const useCreateFinanceTransactionV2 = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinanceTransactionV2>>, TError,CreateFinanceTransactionV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3107,25 +2815,11 @@ export const getUpdateFinanceTransactionUrl = (id: number,) => {
 export const updateFinanceTransaction = async (id: number,
     financeTransactionUpdate: FinanceTransactionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ManagedFinanceTransaction> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedFinanceTransaction>(getUpdateFinanceTransactionUrl(id),
+  return customFetch<ManagedFinanceTransaction>(getUpdateFinanceTransactionUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(financeTransactionUpdate)
   }
 );}
@@ -3168,9 +2862,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateFinanceTransactionMutationError = ErrorType<void>
     export type UpdateFinanceTransactionMutationVariables = {id: number;data: BodyType<FinanceTransactionUpdate>}
 
-    /**
- * @summary Edit a finance transaction
- */
+    /** @summary Edit a finance transaction */
 export const useUpdateFinanceTransaction = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinanceTransaction>>, TError,UpdateFinanceTransactionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3237,10 +2929,7 @@ export type ListEmployeesV2QueryResult = NonNullable<Awaited<ReturnType<typeof l
 export type ListEmployeesV2QueryError = ErrorType<unknown>
 
 
-/**
- * @summary List employees and payroll balances
- */
-
+/** @summary List employees and payroll balances */
 export function useListEmployeesV2<TData = Awaited<ReturnType<typeof listEmployeesV2>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeesV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -3272,25 +2961,11 @@ export const getCreateEmployeeV2Url = () => {
  */
 export const createEmployeeV2 = async (employeeInput: EmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedEmployee> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedEmployee>(getCreateEmployeeV2Url(),
+  return customFetch<ManagedEmployee>(getCreateEmployeeV2Url(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(employeeInput)
   }
 );}
@@ -3333,9 +3008,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateEmployeeV2MutationError = ErrorType<unknown>
     export type CreateEmployeeV2MutationVariables = {data: BodyType<EmployeeInput>}
 
-    /**
- * @summary Add an employee
- */
+    /** @summary Add an employee */
 export const useCreateEmployeeV2 = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmployeeV2>>, TError,CreateEmployeeV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3361,25 +3034,11 @@ export const getUpdateEmployeeUrl = (id: number,) => {
 export const updateEmployee = async (id: number,
     employeeUpdate: EmployeeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ManagedEmployee> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedEmployee>(getUpdateEmployeeUrl(id),
+  return customFetch<ManagedEmployee>(getUpdateEmployeeUrl(id),
   {
     ...options,
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(employeeUpdate)
   }
 );}
@@ -3422,9 +3081,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateEmployeeMutationError = ErrorType<void>
     export type UpdateEmployeeMutationVariables = {id: number;data: BodyType<EmployeeUpdate>}
 
-    /**
- * @summary Edit employee information or deactivate
- */
+    /** @summary Edit employee information or deactivate */
 export const useUpdateEmployee = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmployee>>, TError,UpdateEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3491,10 +3148,7 @@ export type ListPayrollV2QueryResult = NonNullable<Awaited<ReturnType<typeof lis
 export type ListPayrollV2QueryError = ErrorType<unknown>
 
 
-/**
- * @summary List salary obligations
- */
-
+/** @summary List salary obligations */
 export function useListPayrollV2<TData = Awaited<ReturnType<typeof listPayrollV2>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayrollV2>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -3526,25 +3180,11 @@ export const getCreatePayrollV2Url = () => {
  */
 export const createPayrollV2 = async (managedPayrollInput: ManagedPayrollInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedPayrollEntry> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedPayrollEntry>(getCreatePayrollV2Url(),
+  return customFetch<ManagedPayrollEntry>(getCreatePayrollV2Url(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(managedPayrollInput)
   }
 );}
@@ -3587,9 +3227,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePayrollV2MutationError = ErrorType<unknown>
     export type CreatePayrollV2MutationVariables = {data: BodyType<ManagedPayrollInput>}
 
-    /**
- * @summary Create a salary obligation for an employee and period
- */
+    /** @summary Create a salary obligation for an employee and period */
 export const useCreatePayrollV2 = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayrollV2>>, TError,CreatePayrollV2MutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3615,25 +3253,11 @@ export const getRecordPayrollPaymentUrl = (id: number,) => {
 export const recordPayrollPayment = async (id: number,
     payrollPaymentInput: PayrollPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<ManagedPayrollEntry> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ManagedPayrollEntry>(getRecordPayrollPaymentUrl(id),
+  return customFetch<ManagedPayrollEntry>(getRecordPayrollPaymentUrl(id),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(payrollPaymentInput)
   }
 );}
@@ -3676,9 +3300,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RecordPayrollPaymentMutationError = ErrorType<void>
     export type RecordPayrollPaymentMutationVariables = {id: number;data: BodyType<PayrollPaymentInput>}
 
-    /**
- * @summary Record a partial or full salary payment
- */
+    /** @summary Record a partial or full salary payment */
 export const useRecordPayrollPayment = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPayrollPayment>>, TError,RecordPayrollPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
@@ -3752,10 +3374,7 @@ export type GetFinancePeriodReportQueryResult = NonNullable<Awaited<ReturnType<t
 export type GetFinancePeriodReportQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get a balanced daily, monthly, or yearly financial report
- */
-
+/** @summary Get a balanced daily, monthly, or yearly financial report */
 export function useGetFinancePeriodReport<TData = Awaited<ReturnType<typeof getFinancePeriodReport>>, TError = ErrorType<unknown>>(
  params: GetFinancePeriodReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancePeriodReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -3829,10 +3448,7 @@ export type GetCashRegisterQueryResult = NonNullable<Awaited<ReturnType<typeof g
 export type GetCashRegisterQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get cash balance and itemized cash movements
- */
-
+/** @summary Get cash balance and itemized cash movements */
 export function useGetCashRegister<TData = Awaited<ReturnType<typeof getCashRegister>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
@@ -3864,25 +3480,11 @@ export const getRecordCashMovementUrl = () => {
  */
 export const recordCashMovement = async (cashMovementInput: CashMovementInput, options?: Parameters<typeof customFetch>[1]): Promise<RegisterCashMovement> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<RegisterCashMovement>(getRecordCashMovementUrl(),
+  return customFetch<RegisterCashMovement>(getRecordCashMovementUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(cashMovementInput)
   }
 );}
@@ -3925,9 +3527,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RecordCashMovementMutationError = ErrorType<unknown>
     export type RecordCashMovementMutationVariables = {data: BodyType<CashMovementInput>}
 
-    /**
- * @summary Record a cash deposit or withdrawal adjustment
- */
+    /** @summary Record a cash deposit or withdrawal adjustment */
 export const useRecordCashMovement = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordCashMovement>>, TError,RecordCashMovementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<

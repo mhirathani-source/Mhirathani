@@ -8,7 +8,7 @@
 import type { ListFinanceTransactionsV2Kind } from './listFinanceTransactionsV2Kind';
 
 export type ListFinanceTransactionsV2Params = {
-startDate?: Date;
-endDate?: Date;
-kind?: ListFinanceTransactionsV2Kind;
+  startDate?: Date;
+  endDate?: Date;
+  kind?: ListFinanceTransactionsV2Kind;
 };

@@ -70,16 +70,66 @@ export const GetClubSessionResponse = zod.object({
 /**
  * @summary Get operational and financial dashboard
  */
+export const getClubDashboardResponseMonthlySeriesItemMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const getClubDashboardResponseExpiringSubscriptionsItemEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getClubDashboardResponseExpiredSubscriptionAlertsItemEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const getClubDashboardResponseRecentMembersItemBirthDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getClubDashboardResponseRecentRenewalsItemStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const GetClubDashboardResponse = zod.object({
+  "totalMembers": zod.number().int(),
   "activeMembers": zod.number().int(),
   "endingSoon": zod.number().int(),
+  "endingWithin7Days": zod.number().int(),
   "expiredSubscriptions": zod.number().int(),
   "collectedFils": zod.number().int(),
   "outstandingFils": zod.number().int(),
   "monthlyCollectedFils": zod.number().int(),
+  "totalPaymentOperations": zod.number().int(),
+  "newSubscriptionsThisMonth": zod.number().int(),
+  "monthlySeries": zod.array(zod.object({
+  "month": zod.string().regex(getClubDashboardResponseMonthlySeriesItemMonthRegExp),
+  "incomeFils": zod.number().int(),
+  "expensesFils": zod.number().int(),
+  "netFils": zod.number().int(),
+  "newSubscriptions": zod.number().int()
+})),
+  "planDistribution": zod.array(zod.object({
+  "planId": zod.number().int(),
+  "planName": zod.string(),
+  "activeSubscriptions": zod.number().int()
+})),
+  "renewalRate": zod.object({
+  "periodMonths": zod.number().int(),
+  "eligibleSubscriptions": zod.number().int(),
+  "renewedSubscriptions": zod.number().int(),
+  "ratePercent": zod.number().nullable()
+}),
+  "expiringSubscriptions": zod.array(zod.object({
+  "subscriptionId": zod.number().int(),
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "phone": zod.string(),
+  "planName": zod.string(),
+  "endDate": zod.string().regex(getClubDashboardResponseExpiringSubscriptionsItemEndDateRegExp),
+  "daysRemaining": zod.number().int()
+})),
+  "expiredSubscriptionAlerts": zod.array(zod.object({
+  "subscriptionId": zod.number().int(),
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "phone": zod.string(),
+  "planName": zod.string(),
+  "endDate": zod.string().regex(getClubDashboardResponseExpiredSubscriptionAlertsItemEndDateRegExp),
+  "daysRemaining": zod.number().int()
+})),
+  "outstandingMembers": zod.array(zod.object({
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "phone": zod.string(),
+  "outstandingFils": zod.number().int()
+})),
   "recentMembers": zod.array(zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -89,6 +139,23 @@ export const GetClubDashboardResponse = zod.object({
   "notes": zod.string().nullish(),
   "joinedAt": zod.coerce.date(),
   "active": zod.boolean()
+})),
+  "recentRenewals": zod.array(zod.object({
+  "subscriptionId": zod.number().int(),
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "planName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "startDate": zod.string().regex(getClubDashboardResponseRecentRenewalsItemStartDateRegExp)
+})),
+  "recentPayments": zod.array(zod.object({
+  "paymentId": zod.number().int(),
+  "memberId": zod.number().int(),
+  "memberName": zod.string(),
+  "amountFils": zod.number().int(),
+  "kind": zod.string(),
+  "method": zod.string(),
+  "createdAt": zod.coerce.date()
 }))
 })
 

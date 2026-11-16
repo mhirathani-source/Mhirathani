@@ -791,17 +791,107 @@ components:
         pendingCount: { type: integer }
     ClubDashboard:
       type: object
-      required: [activeMembers, endingSoon, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, recentMembers]
+      required: [totalMembers, activeMembers, endingSoon, endingWithin7Days, expiredSubscriptions, collectedFils, outstandingFils, monthlyCollectedFils, totalPaymentOperations, newSubscriptionsThisMonth, monthlySeries, planDistribution, renewalRate, expiringSubscriptions, expiredSubscriptionAlerts, outstandingMembers, recentMembers, recentRenewals, recentPayments]
       properties:
+        totalMembers: { type: integer }
         activeMembers: { type: integer }
         endingSoon: { type: integer }
+        endingWithin7Days: { type: integer }
         expiredSubscriptions: { type: integer }
         collectedFils: { type: integer }
         outstandingFils: { type: integer }
         monthlyCollectedFils: { type: integer }
+        totalPaymentOperations: { type: integer }
+        newSubscriptionsThisMonth: { type: integer }
+        monthlySeries:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardMonth" }
+        planDistribution:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardPlanDistribution" }
+        renewalRate: { $ref: "#/components/schemas/ClubDashboardRenewalRate" }
+        expiringSubscriptions:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardSubscriptionAlert" }
+        expiredSubscriptionAlerts:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardSubscriptionAlert" }
+        outstandingMembers:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardOutstandingMember" }
         recentMembers:
           type: array
           items: { $ref: "#/components/schemas/Member" }
+        recentRenewals:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardRecentRenewal" }
+        recentPayments:
+          type: array
+          items: { $ref: "#/components/schemas/ClubDashboardRecentPayment" }
+    ClubDashboardMonth:
+      type: object
+      required: [month, incomeFils, expensesFils, netFils, newSubscriptions]
+      properties:
+        month: { type: string, pattern: '^\d{4}-\d{2}$' }
+        incomeFils: { type: integer }
+        expensesFils: { type: integer }
+        netFils: { type: integer }
+        newSubscriptions: { type: integer }
+    ClubDashboardPlanDistribution:
+      type: object
+      required: [planId, planName, activeSubscriptions]
+      properties:
+        planId: { type: integer }
+        planName: { type: string }
+        activeSubscriptions: { type: integer }
+    ClubDashboardRenewalRate:
+      type: object
+      required: [periodMonths, eligibleSubscriptions, renewedSubscriptions, ratePercent]
+      properties:
+        periodMonths: { type: integer }
+        eligibleSubscriptions: { type: integer }
+        renewedSubscriptions: { type: integer }
+        ratePercent: { type: [number, "null"] }
+    ClubDashboardSubscriptionAlert:
+      type: object
+      required: [subscriptionId, memberId, memberName, phone, planName, endDate, daysRemaining]
+      properties:
+        subscriptionId: { type: integer }
+        memberId: { type: integer }
+        memberName: { type: string }
+        phone: { type: string }
+        planName: { type: string }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        daysRemaining: { type: integer }
+    ClubDashboardOutstandingMember:
+      type: object
+      required: [memberId, memberName, phone, outstandingFils]
+      properties:
+        memberId: { type: integer }
+        memberName: { type: string }
+        phone: { type: string }
+        outstandingFils: { type: integer }
+    ClubDashboardRecentRenewal:
+      type: object
+      required: [subscriptionId, memberId, memberName, planName, createdAt, startDate]
+      properties:
+        subscriptionId: { type: integer }
+        memberId: { type: integer }
+        memberName: { type: string }
+        planName: { type: string }
+        createdAt: { type: string, format: date-time }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+    ClubDashboardRecentPayment:
+      type: object
+      required: [paymentId, memberId, memberName, amountFils, kind, method, createdAt]
+      properties:
+        paymentId: { type: integer }
+        memberId: { type: integer }
+        memberName: { type: string }
+        amountFils: { type: integer }
+        kind: { type: string }
+        method: { type: string }
+        createdAt: { type: string, format: date-time }
     Member:
       type: object
       required: [id, name, phone, joinedAt, active]

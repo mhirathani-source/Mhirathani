@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -10,7 +10,7 @@ import {
   useListFinanceCategories, useCreateFinanceCategory, useListFinanceTransactions, useCreateFinanceTransaction,
   useGetFinanceReport, useListEmployees, useCreateEmployee, useListPayroll, useCreatePayroll, usePayPayroll,
   useListCashMovements,
-  useCreatePlan, useGetClubDashboard, useGetClubSession, useGetMember,
+  useCreatePlan, useGetClubSession, useGetMember,
   useGetPaymentReceipt, useListPlans, } from "@workspace/api-client-react";
 import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound, Menu, X, ShieldCheck } from "lucide-react";
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
@@ -25,6 +25,7 @@ import { MemberFinancePage } from "./MemberFinancePage";
 import { ThemeToggle } from "./components/theme-toggle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const DashboardPage = lazy(() => import("./DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path; }
@@ -204,7 +205,12 @@ function Protected({ children, ownerOnly = false, permissions = [], anyPermissio
   return <AppShell>{children}</AppShell>;
 }
 
-function RoleDashboard() { return useAccess().can("payments.view", "reports.view", "members.view") ? <Dashboard/> : <StaffDashboard/>; }
+function RoleDashboard() {
+  const hasFinanceDashboard = useAccess().can("payments.view", "reports.view", "members.view");
+  return hasFinanceDashboard
+    ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardPage/></Suspense>
+    : <StaffDashboard/>;
+}
 function RoleMemberDetail() { return useAccess().can("members.view", "subscriptions.view", "payments.view") ? <MemberFinancePage/> : <StaffMemberDetail/>; }
 function RoleSubscriptions() { return useAccess().can("payments.view", "plans.view", "members.view") ? <Subscriptions/> : <OperationalSubscriptions/>; }
 
@@ -214,31 +220,8 @@ function PageHeading({ eyebrow, title, children }: { eyebrow: string; title: str
 function Money({ fils }: { fils: number }) {
   return <>{(fils/1000).toLocaleString("ar-JO",{minimumFractionDigits:3,maximumFractionDigits:3})} <small>د.أ</small></>;
 }
-function Dashboard() {
-  const query = useGetClubDashboard();
-  const summary = query.data;
-  const today = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Amman"}).format(new Date());
-  const finance = useGetFinanceReport({from:`${today.slice(0,7)}-01`,to:today});
-  const income=finance.data?.incomeFils??0, expenses=finance.data?.expensesFils??0, chartMax=Math.max(income,expenses,1);
-  return <><PageHeading eyebrow="نظرة عامة" title="لوحة التحكم"><div className="quick-actions"><Link href="/members" className="button primary"><Plus size={16}/>مشترك جديد</Link><Link href="/subscriptions" className="button ghost">اشتراك جديد</Link><Link href="/finance" className="button ghost">تسجيل حركة مالية</Link></div></PageHeading>
-    {query.isLoading ? <div className="loading-panel">جارٍ تحميل بيانات النادي…</div> : query.error ? <div className="error-panel">تعذر تحميل لوحة التحكم. تحقق من الاتصال والصلاحيات.</div> : <>
-      <div className="stats-grid">
-        <Stat title="المشتركون النشطون" value={summary?.activeMembers??0} icon={<Users/>} tone="green"/>
-        <Stat title="تنتهي خلال يومين" value={summary?.endingSoon??0} icon={<BadgeCheck/>} tone="amber"/>
-        <Stat title="اشتراكات منتهية" value={summary?.expiredSubscriptions??0} icon={<ClipboardList/>} tone="rose"/>
-        <Stat title="الرصيد المستحق" value={<Money fils={summary?.outstandingFils??0}/>} icon={<Wallet/>} tone="blue"/>
-        <Stat title="مصروفات هذا الشهر" value={<Money fils={finance.data?.expensesFils??0}/>} icon={<Banknote/>} tone="rose"/>
-        <Stat title="رواتب مستحقة" value={<Money fils={finance.data?.payrollDueFils??0}/>} icon={<Users/>} tone="amber"/>
-        <Stat title="رصيد الصندوق" value={<Money fils={finance.data?.cashBalanceFils??0}/>} icon={<Wallet/>} tone="blue"/>
-      </div>
-      <div className="panel chart-panel"><div className="panel-head"><div><p className="eyebrow">ملخص الشهر</p><h2>الإيرادات والمصروفات</h2></div><span className="period-pill">{today.slice(0,7)}</span></div><div className="chart-row"><span>الإيرادات</span><div className="chart-track"><i className="chart-income" style={{width:`${Math.max(2,income/chartMax*100)}%`}}/></div><strong><Money fils={income}/></strong></div><div className="chart-row"><span>المصروفات</span><div className="chart-track"><i className="chart-expense" style={{width:`${expenses?Math.max(2,expenses/chartMax*100):0}%`}}/></div><strong><Money fils={expenses}/></strong></div></div>
-      <div className="overview-grid"><div className="panel revenue-panel"><div className="panel-head"><div><p className="eyebrow">التحصيل</p><h2>الإيرادات المحصلة</h2></div><span className="period-pill">هذا الشهر</span></div><div className="revenue-total"><Money fils={summary?.monthlyCollectedFils??0}/></div><div className="revenue-note"><ArrowDownLeft size={16}/> مجموع الدفعات المسجلة هذا الشهر</div><div className="revenue-foot"><span>إجمالي التحصيل المسجل</span><strong><Money fils={summary?.collectedFils??0}/></strong></div></div>
-      <div className="panel"><div className="panel-head"><div><p className="eyebrow">آخر الإضافات</p><h2>المشتركون الجدد</h2></div><Link href="/members" className="text-link">عرض الكل</Link></div>{summary?.recentMembers?.length ? <div className="compact-list">{summary.recentMembers.map(m=><div className="compact-row" key={m.id}><span className="avatar soft">{m.name.slice(0,1)}</span><div><strong>{m.name}</strong><small>{m.phone}</small></div><span className="status-pill success">مشترك</span></div>)}</div>:<Empty text="لا يوجد مشتركون بعد. أضف أول مشترك للبدء."/>}</div></div>
-    </>}
-  </>;
-}
-function Stat({title,value,icon,tone}:{title:string;value:React.ReactNode;icon:React.ReactNode;tone:string}) { return <div className="stat-card"><span className={`stat-icon ${tone}`}>{icon}</span><span className="stat-title">{title}</span><strong>{value}</strong></div>; }
 function Empty({text}:{text:string}) { return <div className="empty-state"><span className="empty-icon"><ClipboardList/></span><p>{text}</p></div>; }
+function Stat({title,value,icon,tone}:{title:string;value:React.ReactNode;icon:React.ReactNode;tone:string}) { return <div className="stat-card"><span className={`stat-icon ${tone}`}>{icon}</span><span className="stat-title">{title}</span><strong>{value}</strong></div>; }
 
 function Members() { return <MembersPage/>; }
 

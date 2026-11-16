@@ -7,6 +7,6 @@
  */
 
 export type GetFinanceReportParams = {
-from: Date;
-to: Date;
+  from: Date;
+  to: Date;
 };

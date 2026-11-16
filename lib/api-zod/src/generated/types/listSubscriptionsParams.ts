@@ -8,6 +8,6 @@
 import type { ListSubscriptionsStatus } from './listSubscriptionsStatus';
 
 export type ListSubscriptionsParams = {
-status?: ListSubscriptionsStatus;
-search?: string;
+  status?: ListSubscriptionsStatus;
+  search?: string;
 };
