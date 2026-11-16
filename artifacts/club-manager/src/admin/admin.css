@@ -20,3 +20,14 @@
 .adm-form-wide input,.adm-form-wide select{min-height:40px;border:1px solid #dfe0da;border-radius:8px;padding:0 10px;background:#fff}
 .adm-ovr{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .adm-ovr select{min-height:32px;border:1px solid #dfe0da;border-radius:6px;font-size:11px}
+
+.adm-link,.adm-card,.adm-matrix fieldset,.adm-ovr fieldset{color:hsl(var(--foreground));background:hsl(var(--card));border-color:hsl(var(--border))}
+.adm-link small,.adm-card small{color:hsl(var(--muted-foreground))}
+.adm-link:hover{border-color:hsl(var(--ring));background:hsl(var(--accent))}
+.adm-msg.ok{background:hsl(151 37% 90%);color:hsl(153 43% 25%)}
+.adm-msg.err{background:hsl(var(--destructive)/.1);color:hsl(var(--destructive))}
+.adm-warn{color:hsl(var(--foreground));background:hsl(43 65% 91%/.75);border-color:hsl(43 47% 68%/.55)}
+.adm-pre{color:hsl(var(--foreground));background:hsl(var(--muted))}
+.adm-row input,.adm-row select,.adm-form-wide input,.adm-form-wide select{background:hsl(var(--card));border-color:hsl(var(--border));color:hsl(var(--foreground))}
+.dark .adm-msg.ok{background:hsl(151 34% 20%);color:hsl(151 45% 77%)}
+.dark .adm-warn{background:hsl(43 34% 21%/.78);border-color:hsl(43 38% 42%/.5)}

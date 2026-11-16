@@ -32,3 +32,22 @@
 .download-text-link { color:#234a8c; font-size:13px; }
 .download-footer { text-align:center; font-size:12px; color:#707680; margin-top:30px; line-height:1.8; }
 @media(max-width:760px) { .download-layout { grid-template-columns:minmax(0,1fr); } .download-card { padding:22px; border-radius:18px; } .download-page { padding:24px 16px; } .download-brand { font-size:14px; gap:10px; letter-spacing:.5px; } }
+
+.download-header { display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:1120px;margin:0 auto 36px; }
+.download-header .download-brand { justify-content:flex-start;margin-bottom:0; }
+.download-page { background:radial-gradient(ellipse at 85% 0%,hsl(43 58% 66% / .15),transparent 28%),hsl(var(--background));color:hsl(var(--foreground)); }
+.download-card { background:hsl(var(--card));border-color:hsl(var(--border));box-shadow:var(--shadow); }
+.download-page h1,.download-page h2,.download-safe strong { color:hsl(var(--foreground)); }
+.download-brand small,.download-lead,.download-guide p,.download-small,.download-safe p,.download-footer { color:hsl(var(--muted-foreground)); }
+.download-badge,.download-guide { background:hsl(var(--accent));border-color:hsl(var(--border));color:hsl(var(--foreground)); }
+.download-primary { background:linear-gradient(135deg,hsl(43 67% 65%),hsl(43 61% 50%));border-color:hsl(43 57% 49%);color:hsl(153 31% 11%); }
+.download-primary:hover:not(:disabled) { background:linear-gradient(135deg,hsl(43 70% 68%),hsl(43 64% 53%)); }
+.download-secondary { background:hsl(var(--card));border-color:hsl(var(--border));color:hsl(var(--foreground)); }
+.download-url,.download-text-link { color:hsl(var(--primary)); }
+.download-safe { border-color:hsl(var(--border)); }
+.download-safe svg { color:hsl(var(--ring)); }
+.download-qr { border-color:hsl(var(--border));background:#fff; }
+.download-notice { color:hsl(var(--muted-foreground)); }
+.download-status { color:hsl(151 43% 35%); }
+.dark .download-status { color:hsl(151 44% 70%); }
+@media(max-width:760px) { .download-header { margin-bottom:28px; } }

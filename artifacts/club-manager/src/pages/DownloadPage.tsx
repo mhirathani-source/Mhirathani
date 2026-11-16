@@ -3,6 +3,7 @@ import { Download, ExternalLink, ShieldCheck, Smartphone, WifiOff } from "lucide
 import { publicDownloadUrl, securePortalUrl } from "../lib/public-site";
 import QRCode from "qrcode";
 import {clearInstallPrompt, getInstallPrompt, subscribeInstallPrompt, type InstallEvent} from "../lib/install";
+import { ThemeToggle } from "../components/theme-toggle";
 import "./download.css";
 
 type InstallGuide = "android" | "ios" | "desktop";
@@ -62,7 +63,7 @@ export default function DownloadPage() {
   }
 
   return <main className="download-page" dir="rtl">
-    <header className="download-brand"><img src={`${base}logo.svg`} width="52" height="52" alt="شعار Prime Boxing Academy"/><div dir="ltr">PRIME BOXING ACADEMY<small dir="rtl">نظام إدارة الأكاديمية</small></div></header>
+    <header className="download-header"><div className="download-brand"><img src={`${base}logo.svg`} width="52" height="52" alt="شعار Prime Boxing Academy"/><div dir="ltr">PRIME BOXING ACADEMY<small dir="rtl">نظام إدارة الأكاديمية</small></div></div><ThemeToggle/></header>
     <div className="download-layout">
       <section className="download-card">
         <span className="download-badge"><Smartphone size={16}/> تثبيت من المتصفح • PWA</span>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -12,7 +12,7 @@ import {
   useListCashMovements,
   useCreatePlan, useGetClubDashboard, useGetClubSession, useGetMember,
   useGetPaymentReceipt, useListPlans, } from "@workspace/api-client-react";
-import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings } from "lucide-react";
+import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { MembersPage, SubscriptionsPage, SubscriptionManager, MemberProfileTools } from "./MembershipPages";
 import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
@@ -22,30 +22,58 @@ import { AdminPage } from "./admin/AdminPage";
 import { OperationalSubscriptions } from "./OperationalSubscriptions";
 import { PlansPage } from "./PlansPage";
 import { MemberFinancePage } from "./MemberFinancePage";
+import { ThemeToggle } from "./components/theme-toggle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path; }
 async function clubApi<T>(path:string,init:RequestInit={}):Promise<T>{const response=await fetch(`${basePath}/api${path}`,{...init,credentials:"same-origin",headers:{"Content-Type":"application/json",...(init.headers||{})}});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.error||"تعذر تنفيذ الطلب");return body as T;}
-const appearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/", logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: { colorPrimary: "#f4c400", colorForeground: "#171717", colorMutedForeground: "#666666", colorDanger: "#bd4a45", colorBackground: "#ffffff", colorInput: "#fafafa", colorInputForeground: "#171717", colorNeutral: "#dddddd", fontFamily: "Arial, sans-serif", borderRadius: "0.75rem" },
-  elements: {
-    rootBox: "w-full flex justify-center", cardBox: "bg-white rounded-2xl w-[440px] max-w-full overflow-hidden",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none", footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "text-slate-900", headerSubtitle: "text-slate-600", socialButtonsBlockButtonText: "text-slate-800",
-    formFieldLabel: "text-slate-800", footerActionLink: "text-emerald-800", footerActionText: "text-slate-600",
-    dividerText: "text-slate-500", identityPreviewEditButton: "text-slate-800", formFieldSuccessText: "text-emerald-800",
-    alertText: "text-red-800", logoBox: "", logoImage: "", socialButtonsBlockButton: "", formButtonPrimary: "",
-    formFieldInput: "", footerAction: "", dividerLine: "", alert: "", otpCodeFieldInput: "", formFieldRow: "", main: "",
-  },
-};
+type AppTheme = "light" | "dark";
+function storedTheme(): AppTheme {
+  try { return localStorage.getItem("prime-theme") === "dark" ? "dark" : "light"; } catch { return "light"; }
+}
+function getClerkAppearance(theme: AppTheme) {
+  const dark = theme === "dark";
+  return {
+    theme: shadcn,
+    cssLayerName: "clerk",
+    options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/", logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
+    variables: {
+      colorPrimary: dark ? "#c9a64f" : "#b9953b",
+      colorForeground: dark ? "#f2eee1" : "#17352a",
+      colorMutedForeground: dark ? "#bac4bb" : "#65756d",
+      colorDanger: dark ? "#e07f73" : "#ad4940",
+      colorBackground: dark ? "#17281f" : "#fbfaf5",
+      colorInput: dark ? "#22382d" : "#f7f5ed",
+      colorInputForeground: dark ? "#f2eee1" : "#17352a",
+      colorNeutral: dark ? "#dae4dc" : "#17352a",
+      fontFamily: '"IBM Plex Sans Arabic", sans-serif',
+      borderRadius: "0.85rem",
+    },
+    elements: {
+      rootBox: "w-full flex justify-center",
+      cardBox: `${dark ? "bg-[#17281f]" : "bg-[#fbfaf5]"} rounded-2xl w-[440px] max-w-full overflow-hidden`,
+      card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+      footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+      headerTitle: dark ? "text-[#f2eee1]" : "text-slate-900",
+      headerSubtitle: dark ? "text-[#bac4bb]" : "text-slate-600",
+      socialButtonsBlockButtonText: dark ? "text-[#f2eee1]" : "text-slate-800",
+      formFieldLabel: dark ? "text-[#f2eee1]" : "text-slate-800",
+      footerActionLink: dark ? "text-[#e2c36c]" : "text-emerald-800",
+      footerActionText: dark ? "text-[#bac4bb]" : "text-slate-600",
+      dividerText: dark ? "text-[#bac4bb]" : "text-slate-500",
+      identityPreviewEditButton: dark ? "text-[#f2eee1]" : "text-slate-800",
+      formFieldSuccessText: dark ? "text-[#9ed4ad]" : "text-emerald-800",
+      alertText: dark ? "text-[#f2aaa2]" : "text-red-800",
+      logoBox: "", logoImage: "", socialButtonsBlockButton: "", formButtonPrimary: "",
+      formFieldInput: "", footerAction: "", dividerLine: "", alert: "", otpCodeFieldInput: "", formFieldRow: "", main: "",
+    },
+  };
+}
 
 function Home() {
-  return <main className="landing" dir="rtl"><div className="landing-brand"><span className="brand-mark-placeholder" aria-label="مكان شعار الأكاديمية">P</span><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link><a href={`${basePath}/download`} className="button ghost" style={{ marginInlineStart: 12 }}>تحميل التطبيق</a></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
+  return <main className="landing" dir="rtl"><div className="landing-topline"><div className="landing-brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><ThemeToggle/></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link><a href={`${basePath}/download`} className="button ghost" style={{ marginInlineStart: 12 }}>تحميل التطبيق</a></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
 }
 
 function HomeRedirect() {
@@ -55,7 +83,7 @@ function HomeRedirect() {
 }
 
 function AuthPages() {
-  return <div className="auth-page" dir="rtl"><div className="auth-brand"><span className="brand-mark-placeholder" aria-label="مكان شعار الأكاديمية">P</span><span>Prime Boxing Academy</span></div><Switch><Route path="/sign-in/*?"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></Route><Route path="/sign-up/*?"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></Route></Switch></div>;
+  return <div className="auth-page" dir="rtl"><div className="auth-topline"><div className="auth-brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy</span></div><ThemeToggle/></div><Switch><Route path="/sign-in/*?"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></Route><Route path="/sign-up/*?"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></Route></Switch></div>;
 }
 
 const allNavItems = [
@@ -75,22 +103,29 @@ function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const session = useGetClubSession();
   const { can, isOwner } = useAccess();
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("prime-sidebar-collapsed") === "true"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("prime-sidebar-collapsed", String(collapsed)); } catch { /* storage may be unavailable */ }
+  }, [collapsed]);
   const clubSettings=useQuery({queryKey:["clubSettings","operational"],queryFn:()=>clubApi<{clubName:string}>("/club/operations/settings"),enabled:session.data?.status==="active"});
   const clubName=clubSettings.data?.clubName||"Prime Boxing Academy";
   const navItems = allNavItems.filter(item => !session.isError && session.data?.status === "active" && (item.href === "/admin" ? isOwner : item.href === "/finance" ? item.permissions.some(p => can(p)) : can(...item.permissions)))
     .map(item => item.href === "/admin" && session.data?.pendingCount ? { ...item, title: `${item.title} (${session.data.pendingCount} طلب)` } : item);
-  return <div className="app-shell" dir="rtl">
+  return <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`} dir="rtl">
     <aside className="sidebar">
-      <Link href="/dashboard" className="brand"><span className="brand-mark-placeholder">P</span><span style={{overflowWrap:"anywhere"}}>{clubName}<small>إدارة الأكاديمية</small></span></Link>
+      <Link href="/dashboard" className="brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span className="brand-copy" style={{overflowWrap:"anywhere"}}>{clubName}<small>إدارة الأكاديمية</small></span></Link>
       <p className="nav-label">القائمة الرئيسية</p>
-      <nav>{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={`nav-link ${location===href?"active":""}`}><Icon size={18}/>{title}</Link>)}</nav>
+      <nav>{navItems.map(({href,title,icon:Icon})=>{const active=location===href||(href==="/members"&&location.startsWith("/members/"));return <Link key={href} href={href} title={title} aria-label={title} aria-current={active?"page":undefined} className={`nav-link ${active?"active":""}`}><Icon size={18}/><span>{title}</span></Link>;})}</nav>
       <div className="sidebar-bottom">
         <div className="profile"><div className="avatar">{user?.firstName?.slice(0,1)||"م"}</div><div><strong>{user?.fullName||"حساب الأكاديمية"}</strong><small>{user?.primaryEmailAddress?.emailAddress}</small></div></div>
-        <Link className="nav-link" href="/account">إعدادات حسابي</Link>
-        <button className="nav-link logout" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/>تسجيل الخروج</button>
+        <Link className="nav-link" href="/account" title="إعدادات حسابي" aria-label="إعدادات حسابي"><UserRound size={18}/><span>إعدادات حسابي</span></Link>
+        <button className="nav-link sidebar-toggle" type="button" data-testid="toggle-sidebar" aria-label={collapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية"} aria-expanded={!collapsed} onClick={() => setCollapsed(v => !v)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>طي القائمة</span></button>
+        <button className="nav-link logout" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={()=>signOut({redirectUrl:basePath||"/"})}><LogOut size={18}/><span>تسجيل الخروج</span></button>
       </div>
     </aside>
-    <main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-user">بوابة إدارة الأكاديمية</div></header><section className="page-content">{children}</section></main>
+    <main className="main-area"><header className="topbar"><div><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-tools"><span className="topbar-user">بوابة إدارة الأكاديمية</span><ThemeToggle/></div></header><section className="page-content">{children}</section></main>
     <nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav>
   </div>;
 }
@@ -288,6 +323,16 @@ function ScopedQueries() {
 
 function ClerkApp() {
   const [,setLocation]=useLocation();
+  const [theme,setTheme]=useState<AppTheme>(storedTheme);
+  useEffect(()=>{
+    const onThemeChange=(event:Event)=>{
+      const next=(event as CustomEvent<AppTheme>).detail;
+      if(next==="light"||next==="dark")setTheme(next);
+    };
+    window.addEventListener("prime-theme-change",onThemeChange);
+    return()=>window.removeEventListener("prime-theme-change",onThemeChange);
+  },[]);
+  const appearance=useMemo(()=>getClerkAppearance(theme),[theme]);
   return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}
     localization={{ ...arSA, formFieldInputPlaceholder__emailAddress: "أدخل بريدك الإلكتروني", formFieldInputPlaceholder__emailAddress_username: "أدخل بريدك الإلكتروني" }}
     routerPush={(to)=>setLocation(stripBase(to))} routerReplace={(to)=>setLocation(stripBase(to),{replace:true})}>
