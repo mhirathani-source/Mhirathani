@@ -49,6 +49,7 @@ const CHART_COLORS = {
   muted: "#8C9A91",
   slice: ["#176247", "#BE9B4D", "#6E9C84", "#7A6543", "#B77A70", "#677E70"],
 };
+const clubLogoUrl = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/club-logo.jpg`;
 
 function moneyValue(fils: number, compact = false) {
   return (fils / 1000).toLocaleString("ar-JO", {
@@ -331,7 +332,7 @@ export function DashboardPage() {
 
       <section className="prime-dashboard-hero" aria-label="ترحيب وملخص الأكاديمية">
         <div className="hero-text">
-          <div className="hero-lockup"><img src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/logo.svg`} alt="" /><span><strong>PRIME BOXING ACADEMY</strong><small>إدارة الأكاديمية</small></span></div>
+          <div className="hero-lockup"><img src={clubLogoUrl} alt="شعار Prime Boxing Academy" /><span><strong>PRIME BOXING ACADEMY</strong><small>إدارة الأكاديمية</small></span></div>
           <span className="hero-period"><CalendarDays size={13} />{currentMonthLabel}</span>
           <h2>تقدّم الأكاديمية<br /><em>يبدأ من هنا.</em></h2>
           <p>{summary.activeMembers.toLocaleString("ar-JO")} مشتركًا نشطًا، مع متابعة مباشرة للإيرادات والعضويات.</p>
@@ -342,9 +343,22 @@ export function DashboardPage() {
         </div>
         <div className="hero-orbit-art" aria-hidden="true">
           <span className="orbit orbit-a" /><span className="orbit orbit-b" /><span className="orbit orbit-c" />
-          <div className="hero-medallion"><span>PRIME</span><strong>{summary.activeMembers.toLocaleString("ar-JO")}</strong><small>مشترك نشط</small></div>
+          <div className="hero-medallion">
+            <img src={clubLogoUrl} alt="" />
+            <div className="hero-member-count"><strong>{summary.activeMembers.toLocaleString("ar-JO")}</strong><small>مشترك نشط</small></div>
+          </div>
           <div className="hero-float-card"><TrendingUp size={14} /><span>تحصيل هذا الشهر</span><strong><Money fils={summary.monthlyCollectedFils} compact /></strong></div>
           <div className="hero-side-label"><span>01</span> AMMAN · JORDAN</div>
+        </div>
+      </section>
+
+      <section className="dashboard-section quick-actions-section" aria-label="العمليات اليومية">
+        <div className="dashboard-quick-actions">
+          {can("members.create") && <QuickAction href="/members" icon={<Plus size={17} />} label="إضافة مشترك" index="01" testId="quick-add-member" />}
+          {can("subscriptions.create", "members.view") && <QuickAction href="/subscriptions" icon={<BadgeCheck size={17} />} label="اشتراك جديد" index="02" testId="quick-new-subscription" />}
+          {can("payments.create", "subscriptions.view") && <QuickAction href="/subscriptions" icon={<CreditCard size={17} />} label="تسجيل دفعة" index="03" testId="quick-new-payment" />}
+          {can("members.view") && <QuickAction href="/members" icon={<Users size={17} />} label="عرض المشتركين" index="04" testId="quick-all-members" />}
+          {can("reports.view") && <QuickAction href="/reports" icon={<ChartNoAxesCombined size={17} />} label="التقارير المالية" index="05" testId="quick-finance-reports" />}
         </div>
       </section>
 
@@ -370,9 +384,34 @@ export function DashboardPage() {
           <span className="section-period">آخر ٦ أشهر · الشهر الحالي حتى اليوم</span>
         </div>
         <div className="dashboard-analytics-grid">
+          <article className="prime-dashboard-panel finance-summary-panel">
+            <div className="dashboard-panel-heading">
+              <div><span className="panel-overline">Financial Summary</span><h3>التحليلات المالية</h3></div>
+              <Link href={reportPath} className="panel-action" data-testid="link-finance-summary">التفاصيل <ChevronLeft size={14} /></Link>
+            </div>
+            <div className="finance-net-highlight">
+              <span>صافي الدخل</span>
+              <strong><Money fils={monthlyNet} /></strong>
+              <span className={`month-change ${incomeChange === null ? "neutral" : incomeChange >= 0 ? "positive" : "negative"}`}>
+                {incomeChange === null ? <Activity size={12} /> : incomeChange >= 0 ? <ArrowUpLeft size={12} /> : <ArrowDownLeft size={12} />}
+                {incomeChange === null ? "لا توجد مقارنة سابقة" : `${Math.abs(incomeChange).toLocaleString("ar-JO")}٪`}
+              </span>
+            </div>
+            <div className="finance-summary-rows">
+              <FinanceSummaryLine label="الإيرادات المحصلة" fils={monthlyIncome} icon={<ArrowDownLeft size={14} />} tone="income" />
+              <FinanceSummaryLine label="المصروفات" fils={monthlyExpenses} icon={<ArrowUpLeft size={14} />} tone="expense" />
+              <FinanceSummaryLine label="ديون المشتركين" fils={summary.outstandingFils} icon={<Wallet size={14} />} tone="debt" />
+            </div>
+            <div className="finance-summary-bottom">
+              <FinanceValue label="رواتب مستحقة" fils={financeReport?.payrollDueFils} tone="gold" />
+              <FinanceValue label="رصيد الصندوق" fils={financeReport?.cashBalanceFils} tone="neutral" />
+            </div>
+            <p className="dashboard-footnote">إجمالي التحصيل منذ بدء السجل: <strong><Money fils={summary.collectedFils} compact /></strong></p>
+          </article>
+
           <article className="prime-dashboard-panel finance-analytics-panel">
             <div className="dashboard-panel-heading">
-              <div><span className="panel-overline">Financial Analytics</span><h3>الإيرادات والمصروفات الشهرية</h3></div>
+              <div><span className="panel-overline">Monthly Performance</span><h3>الإيرادات الشهرية</h3></div>
               <ChartExportButton
                 onClick={() => downloadCsv("prime-monthly-finance.csv", [
                   { key: "month", label: "الشهر" },
@@ -393,7 +432,7 @@ export function DashboardPage() {
               </span>
             </div>
             <div className="dashboard-chart finance-chart" role="img" aria-label="رسم الإيرادات والمصروفات خلال آخر ستة أشهر">
-              <ResponsiveContainer width="100%" height={250} debounce={0}>
+              <ResponsiveContainer width="100%" height={190} debounce={0}>
                 <AreaChart data={months} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="primeIncomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CHART_COLORS.emerald} stopOpacity={0.28} /><stop offset="100%" stopColor={CHART_COLORS.emerald} stopOpacity={0.02} /></linearGradient>
@@ -409,31 +448,13 @@ export function DashboardPage() {
               </ResponsiveContainer>
             </div>
             <div className="finance-chart-legend"><span><i className="legend-emerald" />الإيرادات</span><span><i className="legend-expense" />المصروفات</span></div>
-            <div className="finance-summary-strip">
-              <FinanceValue label="صافي الدخل" fils={monthlyNet} tone="net" />
-              <FinanceValue label="المصروفات" fils={monthlyExpenses} tone="expense" />
-              <FinanceValue label="رواتب مستحقة" fils={financeReport?.payrollDueFils} tone="gold" />
-              <FinanceValue label="رصيد الصندوق" fils={financeReport?.cashBalanceFils} tone="neutral" />
-            </div>
-            <p className="dashboard-footnote">إجمالي التحصيل منذ بدء السجل: <strong><Money fils={summary.collectedFils} compact /></strong></p>
             {previousMonth && currentMonth && <div className="comparison-note"><span>الحالي حتى اليوم <b><Money fils={currentMonth.incomeFils} compact /></b></span><i /><span>الشهر السابق <b><Money fils={previousIncome} compact /></b></span></div>}
           </article>
 
           <article className="prime-dashboard-panel membership-analytics-panel">
             <div className="dashboard-panel-heading">
-              <div><span className="panel-overline">Member Analytics</span><h3>توزيع الباقات ومعدل التجديد</h3></div>
+              <div><span className="panel-overline">Member Analytics</span><h3>توزيع المشتركين حسب الباقة</h3></div>
               <Link href={subscriptionPath} className="panel-action" data-testid="link-dashboard-subscriptions">الاشتراكات <ChevronLeft size={14} /></Link>
-            </div>
-            <div className="membership-overview">
-              <div className="renewal-ring" style={{ "--renewal-degree": `${renewalPercent ?? 0}%` } as CSSProperties}>
-                <div><strong>{renewalPercent === null || renewalPercent === undefined ? "—" : `${Math.round(renewalPercent).toLocaleString("ar-JO")}٪`}</strong><small>معدل التجديد</small></div>
-              </div>
-              <div className="member-counts">
-                <CountLine label="نشط" value={summary.activeMembers} tone="green" />
-                <CountLine label="منتهي" value={summary.expiredSubscriptions} tone="rose" />
-                <CountLine label="جديد هذا الشهر" value={summary.newSubscriptionsThisMonth} tone="gold" />
-                <small className="renewal-definition">{summary.renewalRate.eligibleSubscriptions ? `من ${summary.renewalRate.eligibleSubscriptions.toLocaleString("ar-JO")} اشتراكًا انتهى خلال آخر ٦ أشهر` : "لا توجد اشتراكات مؤهلة للحساب خلال آخر ٦ أشهر"}</small>
-              </div>
             </div>
             <div className="plan-chart-heading"><strong>الاشتراكات النشطة حسب الباقة</strong><span>{topPlanTotal.toLocaleString("ar-JO")} اشتراك</span></div>
             {planChartData.length ? (
@@ -506,6 +527,22 @@ export function DashboardPage() {
             <Link href={subscriptionPath} className="dashboard-see-all" data-testid="link-dashboard-all-alerts">عرض سجل الاشتراكات <ChevronLeft size={14} /></Link>
           </article>
 
+          <article className="prime-dashboard-panel renewal-performance-panel">
+            <div className="dashboard-panel-heading"><div><span className="panel-overline">Renewal Performance</span><h3>أداء الاشتراكات</h3></div><BadgeCheck size={17} className="activity-heading-icon" /></div>
+            <div className="membership-overview">
+              <div className="renewal-ring" style={{ "--renewal-degree": `${renewalPercent ?? 0}%` } as CSSProperties}>
+                <div><strong>{renewalPercent === null || renewalPercent === undefined ? "—" : `${Math.round(renewalPercent).toLocaleString("ar-JO")}٪`}</strong><small>معدل التجديد</small></div>
+              </div>
+              <div className="member-counts">
+                <CountLine label="اشتراكات نشطة" value={summary.activeMembers} tone="green" />
+                <CountLine label="اشتراكات منتهية" value={summary.expiredSubscriptions} tone="rose" />
+                <CountLine label="اشتراكات جديدة" value={summary.newSubscriptionsThisMonth} tone="gold" />
+              </div>
+            </div>
+            <p className="renewal-definition">{summary.renewalRate.eligibleSubscriptions ? `من ${summary.renewalRate.eligibleSubscriptions.toLocaleString("ar-JO")} اشتراكًا انتهى خلال آخر ٦ أشهر` : "لا توجد اشتراكات مؤهلة للحساب خلال آخر ٦ أشهر"}</p>
+            <div className="renewal-panel-foot"><span>معدل التجديد</span><strong>{renewalPercent === null || renewalPercent === undefined ? "—" : `${Math.round(renewalPercent).toLocaleString("ar-JO")}٪`}</strong></div>
+          </article>
+
           <article className="prime-dashboard-panel activity-panel">
             <div className="dashboard-panel-heading"><div><span className="panel-overline">Academy Activity</span><h3>آخر التسجيلات والتجديدات والمدفوعات</h3></div><Activity size={17} className="activity-heading-icon" /></div>
             {activities.length ? <div className="dashboard-activity-list">{activities.map((item) => (
@@ -520,20 +557,6 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="dashboard-section quick-actions-section">
-        <div className="dashboard-section-heading">
-          <div><span className="section-overline">04 / العمليات اليومية</span><h2>اختصارات الوصول</h2></div>
-          <span className="section-period">روابط متاحة وفق صلاحيات حسابك</span>
-        </div>
-        <div className="dashboard-quick-actions">
-          {can("members.create") && <QuickAction href="/members" icon={<Plus size={17} />} label="إضافة مشترك" index="01" testId="quick-add-member" />}
-          {can("subscriptions.create", "members.view") && <QuickAction href="/subscriptions" icon={<BadgeCheck size={17} />} label="اشتراك جديد" index="02" testId="quick-new-subscription" />}
-          {can("payments.create", "subscriptions.view") && <QuickAction href="/subscriptions" icon={<CreditCard size={17} />} label="تسجيل دفعة" index="03" testId="quick-new-payment" />}
-          {can("members.view") && <QuickAction href="/members" icon={<Users size={17} />} label="عرض المشتركين" index="04" testId="quick-all-members" />}
-          {can("reports.view") && <QuickAction href="/reports" icon={<ChartNoAxesCombined size={17} />} label="التقارير المالية" index="05" testId="quick-finance-reports" />}
-        </div>
-      </section>
-
       <footer className="prime-dashboard-footer"><span>PRIME BOXING ACADEMY</span><span>جميع القيم بالدينار الأردني · التوقيت المحلي: عمّان</span><Check size={14} /></footer>
     </div>
   );
@@ -541,6 +564,10 @@ export function DashboardPage() {
 
 function FinanceValue({ label, fils, tone }: { label: string; fils?: number; tone: string }) {
   return <div className={`finance-mini finance-${tone}`}><span>{label}</span><strong>{fils === undefined ? "—" : <Money fils={fils} compact />}</strong></div>;
+}
+
+function FinanceSummaryLine({ label, fils, icon, tone }: { label: string; fils: number; icon: ReactNode; tone: string }) {
+  return <div className={`finance-summary-line summary-${tone}`}><span>{icon}</span><span>{label}</span><strong><Money fils={fils} compact /></strong></div>;
 }
 
 function CountLine({ label, value, tone }: { label: string; value: number; tone: string }) {

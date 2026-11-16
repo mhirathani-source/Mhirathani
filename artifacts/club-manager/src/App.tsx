@@ -39,7 +39,7 @@ function getClerkAppearance(theme: AppTheme) {
   return {
     theme: shadcn,
     cssLayerName: "clerk",
-    options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/", logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
+      options: { logoPlacement: "inside" as const, logoLinkUrl: basePath || "/", logoImageUrl: `${window.location.origin}${basePath}/club-logo.jpg` },
     variables: {
       colorPrimary: dark ? "#c9a64f" : "#b9953b",
       colorForeground: dark ? "#f2eee1" : "#17352a",
@@ -74,7 +74,7 @@ function getClerkAppearance(theme: AppTheme) {
 }
 
 function Home() {
-  return <main className="landing" dir="rtl"><div className="landing-topline"><div className="landing-brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><ThemeToggle/></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link><a href={`${basePath}/download`} className="button ghost" style={{ marginInlineStart: 12 }}>تحميل التطبيق</a></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
+  return <main className="landing" dir="rtl"><div className="landing-topline"><div className="landing-brand"><img className="brand-mark-image" src={`${basePath}/club-logo.jpg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy<small>أكاديمية برايم للملاكمة</small></span></div><ThemeToggle/></div><div className="landing-copy"><p className="eyebrow">نظام إدارة الأكاديمية</p><h1>إدارة أكاديميتك،<br/><em>بثقة ووضوح.</em></h1><p>منصة عربية موحدة لتنظيم المشتركين والاشتراكات والعمليات اليومية.</p><Link href="/sign-in" className="button primary">تسجيل الدخول</Link><a href={`${basePath}/download`} className="button ghost" style={{ marginInlineStart: 12 }}>تحميل التطبيق</a></div><div className="landing-mark">Prime Boxing Academy <span>إدارة أكثر تنظيمًا.</span></div></main>;
 }
 
 function HomeRedirect() {
@@ -84,7 +84,7 @@ function HomeRedirect() {
 }
 
 function AuthPages() {
-  return <div className="auth-page" dir="rtl"><div className="auth-topline"><div className="auth-brand"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy</span></div><ThemeToggle/></div><Switch><Route path="/sign-in/*?"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></Route><Route path="/sign-up/*?"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></Route></Switch></div>;
+  return <div className="auth-page" dir="rtl"><div className="auth-topline"><div className="auth-brand"><img className="brand-mark-image" src={`${basePath}/club-logo.jpg`} alt="شعار Prime Boxing Academy"/><span>Prime Boxing Academy</span></div><ThemeToggle/></div><Switch><Route path="/sign-in/*?"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></Route><Route path="/sign-up/*?"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></Route></Switch></div>;
 }
 
 const allNavItems = [
@@ -148,7 +148,7 @@ function AppShell({ children }: { children: ReactNode }) {
     <aside id="primary-sidebar" className="sidebar" aria-label="القائمة الرئيسية" aria-hidden={isMobile ? !mobileOpen : undefined} inert={isMobile && !mobileOpen}>
       <div className="sidebar-brand-row">
         <Link href="/dashboard" className="brand" aria-label="Prime Boxing Academy — لوحة التحكم" onClick={() => setMobileOpen(false)}>
-          <span className="sidebar-brand-frame"><img className="brand-mark-image" src={`${basePath}/logo.svg`} alt="" /></span>
+          <span className="sidebar-brand-frame"><img className="brand-mark-image" src={`${basePath}/club-logo.jpg`} alt="" /></span>
           <span className="brand-copy"><strong dir="ltr">PRIME BOXING ACADEMY</strong><small dir="ltr">Academy Management</small></span>
         </Link>
         <button type="button" className="sidebar-mobile-close" aria-label="إغلاق القائمة" onClick={() => setMobileOpen(false)}><X size={18}/></button>
