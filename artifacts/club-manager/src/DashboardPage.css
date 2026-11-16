@@ -423,8 +423,9 @@
   --pd-emerald: #0d6347;
   --pd-deep: #052b23;
   --pd-gold: #c99d35;
-  --pd-border: #e3e9e3;
-  --pd-card: #fff;
+  --pd-border: hsl(var(--border));
+  --pd-card: hsl(var(--card));
+  --pd-muted: hsl(var(--muted-foreground));
   padding-top: 0;
 }
 
@@ -545,7 +546,7 @@
   background: linear-gradient(145deg, #fff, #f7f9f5);
 }
 
-.dashboard-quick-action > small { color: #ae8b38; font-size: 7px; }
+.dashboard-quick-action > small { color: #765b19; font-size: 9px; }
 .dashboard-quick-action > span {
   width: 31px;
   height: 31px;
@@ -588,7 +589,7 @@
 .metric-gold .metric-icon { color: #9b751f; border-color: #ecdfb8; background: linear-gradient(145deg, #fff6d8, #efe2b8); }
 .metric-value { margin-top: 6px; font-size: 22px; }
 .metric-note { font-size: 7px; }
-.metric-arrow { color: #a68c4c; }
+.metric-arrow { color: #78601f; }
 
 .dashboard-analytics-grid {
   grid-template-columns: minmax(220px, .9fr) minmax(330px, 1.35fr) minmax(245px, 1fr);
@@ -753,4 +754,115 @@
   .prime-dashboard-panel, .prime-metric-card { box-shadow: none; break-inside: avoid; }
   .dashboard-section { break-inside: avoid; }
   .prime-dashboard-footer { display: flex !important; }
+}
+
+/* Keep dashboard surfaces and text readable in both theme modes. */
+.dark .prime-dashboard {
+  --pd-border: hsl(var(--border));
+  --pd-card: hsl(var(--card));
+  --pd-muted: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
+}
+.dark .prime-dashboard-heading h1,
+.dark .prime-dashboard .dashboard-quick-action,
+.dark .prime-dashboard .prime-metric-card,
+.dark .prime-dashboard .prime-dashboard-panel {
+  color: hsl(var(--foreground));
+}
+.dark .prime-dashboard-heading h1 { color: hsl(var(--foreground)); }
+.dark .prime-dashboard .dashboard-quick-actions,
+.dark .prime-dashboard .dashboard-quick-action,
+.dark .prime-dashboard .prime-metric-card,
+.dark .prime-dashboard .prime-dashboard-panel {
+  border-color: hsl(var(--border));
+  background: linear-gradient(150deg, hsl(var(--card)), hsl(153 18% 11%));
+  box-shadow: 0 8px 24px hsl(0 0% 0% / .2), inset 0 1px hsl(0 0% 100% / .035);
+}
+.dark .prime-dashboard .dashboard-section-heading h2,
+.dark .prime-dashboard .dashboard-panel-heading h3,
+.dark .prime-dashboard .metric-top,
+.dark .prime-dashboard .metric-value,
+.dark .prime-dashboard .finance-chart-summary > div strong,
+.dark .prime-dashboard .finance-summary-line,
+.dark .prime-dashboard .finance-summary-line strong,
+.dark .prime-dashboard .finance-mini strong,
+.dark .prime-dashboard .member-count-line,
+.dark .prime-dashboard .member-count-line strong,
+.dark .prime-dashboard .list-main strong,
+.dark .prime-dashboard .activity-row strong,
+.dark .prime-dashboard .activity-row time {
+  color: hsl(var(--foreground));
+}
+.dark .prime-dashboard .finance-chart-summary > div strong small,
+.dark .prime-dashboard .finance-chart-summary > div > small,
+.dark .prime-dashboard .finance-summary-line small,
+.dark .prime-dashboard .finance-mini span,
+.dark .prime-dashboard .finance-mini strong small,
+.dark .prime-dashboard .dashboard-footnote,
+.dark .prime-dashboard .dashboard-footnote strong small,
+.dark .prime-dashboard .dashboard-update-state,
+.dark .prime-dashboard .section-period,
+.dark .prime-dashboard .metric-note,
+.dark .prime-dashboard .renewal-ring small,
+.dark .prime-dashboard .prime-dashboard-footer {
+  color: hsl(var(--muted-foreground));
+}
+.dark .prime-dashboard .section-overline,
+.dark .prime-dashboard .panel-overline,
+.dark .prime-dashboard .panel-action,
+.dark .prime-dashboard .dashboard-quick-action > small,
+.dark .prime-dashboard .metric-arrow {
+  color: hsl(43 68% 72%) !important;
+}
+.dark .prime-dashboard .finance-net-highlight {
+  border-color: hsl(151 28% 29%);
+  background: linear-gradient(115deg, hsl(153 28% 17%), hsl(43 18% 16%));
+}
+.dark .prime-dashboard .finance-net-highlight > span:first-child,
+.dark .prime-dashboard .finance-net-highlight > strong,
+.dark .prime-dashboard .finance-summary-line strong,
+.dark .prime-dashboard .finance-mini strong,
+.dark .prime-dashboard .renewal-ring strong,
+.dark .prime-dashboard .renewal-panel-foot strong,
+.dark .prime-dashboard .dashboard-footnote strong {
+  color: hsl(var(--foreground));
+}
+.dark .prime-dashboard .finance-summary-line,
+.dark .prime-dashboard .finance-summary-bottom,
+.dark .prime-dashboard .comparison-note,
+.dark .prime-dashboard .renewal-definition,
+.dark .prime-dashboard .prime-dashboard-footer {
+  border-color: hsl(var(--border));
+}
+.dark .prime-dashboard .dashboard-list-row,
+.dark .prime-dashboard .activity-row {
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / .35);
+}
+.dark .prime-dashboard .metric-icon,
+.dark .prime-dashboard .dashboard-quick-action > span {
+  border-color: hsl(43 42% 43%);
+  color: hsl(43 74% 78%);
+  background: linear-gradient(145deg, hsl(43 39% 28%), hsl(43 35% 20%));
+  box-shadow: inset 0 1px hsl(0 0% 100% / .08);
+}
+.dark .prime-dashboard .metric-green .metric-icon,
+.dark .prime-dashboard .summary-income > span:first-child {
+  color: hsl(151 48% 74%);
+  border-color: hsl(151 30% 34%);
+  background: hsl(151 32% 20%);
+}
+.dark .prime-dashboard .metric-rose .metric-icon,
+.dark .prime-dashboard .summary-expense > span:first-child {
+  color: hsl(7 65% 76%);
+  border-color: hsl(7 30% 37%);
+  background: hsl(7 32% 21%);
+}
+.dark .prime-dashboard .summary-debt > span:first-child {
+  color: hsl(43 74% 78%);
+  background: hsl(43 34% 22%);
+}
+
+@media (max-width: 360px) {
+  .dashboard-quick-actions { grid-template-columns: minmax(0, 1fr); }
 }

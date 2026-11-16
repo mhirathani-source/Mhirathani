@@ -12,7 +12,7 @@ import {
   useListCashMovements,
   useCreatePlan, useGetClubSession, useGetMember,
   useGetPaymentReceipt, useListPlans, } from "@workspace/api-client-react";
-import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound, Menu, X, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, BadgeCheck, Banknote, ChartNoAxesCombined, ClipboardList, Dumbbell, LayoutDashboard, LogOut, Plus, Users, Wallet, Printer, MessageCircle, Settings, PanelLeftClose, PanelLeftOpen, UserRound, Menu, MoreHorizontal, X, ShieldCheck } from "lucide-react";
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { MembersPage, SubscriptionsPage, SubscriptionManager, MemberProfileTools } from "./MembershipPages";
 import { FinancePage as FinanceManagementPage, ReportsPage } from "./FinancePages";
@@ -108,6 +108,7 @@ function AppShell({ children }: { children: ReactNode }) {
     try { return localStorage.getItem("prime-sidebar-collapsed") === "true"; } catch { return false; }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 720px)").matches);
   useEffect(() => {
     try { localStorage.setItem("prime-sidebar-collapsed", String(collapsed)); } catch { /* storage may be unavailable */ }
@@ -136,12 +137,28 @@ function AppShell({ children }: { children: ReactNode }) {
     };
   }, [mobileOpen]);
   useEffect(() => {
+    if (!mobileMoreOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMoreOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileMoreOpen]);
+  useEffect(() => {
     setMobileOpen(false);
+    setMobileMoreOpen(false);
   }, [location]);
   const clubSettings=useQuery({queryKey:["clubSettings","operational"],queryFn:()=>clubApi<{clubName:string}>("/club/operations/settings"),enabled:session.data?.status==="active"});
   const clubName=clubSettings.data?.clubName||"Prime Boxing Academy";
   const navItems = allNavItems.filter(item => !session.isError && session.data?.status === "active" && (item.href === "/admin" ? isOwner : item.href === "/finance" ? item.permissions.some(p => can(p)) : can(...item.permissions)))
     .map(item => item.href === "/admin" && session.data?.pendingCount ? { ...item, title: `${item.title} (${session.data.pendingCount} طلب)` } : item);
+  const mobilePriority = ["/dashboard", "/members", "/subscriptions", "/finance", "/plans"];
+  const mobilePrimaryItems = navItems
+    .filter(item => mobilePriority.includes(item.href))
+    .sort((a, b) => mobilePriority.indexOf(a.href) - mobilePriority.indexOf(b.href))
+    .slice(0, 4);
+  const mobilePrimaryHrefs = new Set(mobilePrimaryItems.map(item => item.href));
+  const mobileMoreItems = navItems.filter(item => !mobilePrimaryHrefs.has(item.href));
   const shellClass = `app-shell ${collapsed && !isMobile ? "sidebar-collapsed" : ""} ${mobileOpen ? "mobile-sidebar-open" : ""}`;
   return <div className={shellClass} dir="rtl">
     {isMobile && mobileOpen && <button type="button" className="sidebar-scrim" aria-label="إغلاق القائمة الجانبية" onClick={() => setMobileOpen(false)} />}
@@ -167,7 +184,14 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
     </aside>
     <main className="main-area"><header className="topbar"><div className="topbar-leading"><button type="button" className="sidebar-mobile-trigger" aria-label={mobileOpen?"إغلاق القائمة":"فتح القائمة"} aria-expanded={mobileOpen} aria-controls="primary-sidebar" onClick={() => setMobileOpen(v=>!v)}><Menu size={19}/></button><span className="topbar-date">{new Intl.DateTimeFormat("ar-JO",{dateStyle:"full",timeZone:"Asia/Amman"}).format(new Date())}</span><span className="mobile-brand">{clubName}</span></div><div className="topbar-tools"><span className="topbar-user">بوابة إدارة الأكاديمية</span><ThemeToggle/></div></header><section className="page-content">{children}</section></main>
-    <nav className="mobile-nav">{navItems.map(({href,title,icon:Icon})=><Link key={href} href={href} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}</nav>
+     <nav className="mobile-nav" aria-label="التنقل السريع">
+       {mobilePrimaryItems.map(({href,title,icon:Icon})=><Link key={href} href={href} title={title} aria-current={location===href?"page":undefined} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}
+       <button type="button" className={`mobile-more-trigger ${mobileMoreOpen?"active":""}`} aria-haspopup="menu" aria-expanded={mobileMoreOpen} aria-controls="mobile-more-menu" onClick={()=>setMobileMoreOpen(v=>!v)}><MoreHorizontal size={20}/><small>المزيد</small></button>
+       {mobileMoreOpen && <div className="mobile-more-menu" id="mobile-more-menu" role="menu" aria-label="بقية صفحات الأكاديمية">
+         {mobileMoreItems.map(({href,title,icon:Icon})=>{const active=location===href||(href==="/members"&&location.startsWith("/members/"));return <Link key={href} role="menuitem" href={href} aria-current={active?"page":undefined} className={active?"active":""} onClick={()=>setMobileMoreOpen(false)}><Icon size={18}/><span>{title}</span></Link>;})}
+         <Link role="menuitem" href="/account" className={location==="/account"?"active":""} onClick={()=>setMobileMoreOpen(false)}><UserRound size={18}/><span>إعدادات حسابي</span></Link>
+       </div>}
+     </nav>
   </div>;
 }
 
