@@ -29,7 +29,9 @@ import { Link, Redirect, Route, Router, Switch, useLocation, useParams } from "w
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 setBaseUrl(base);
 const clerkKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = `${window.location.origin}${base}/api/__clerk`;
+const clerkProxyUrl = import.meta.env.PROD
+  ? `${window.location.origin}${base}/api/__clerk`
+  : undefined;
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } });
 const logo = `${base}/iraq-alameer-logo.png`;
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Amman" }).format(new Date());

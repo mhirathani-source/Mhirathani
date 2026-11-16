@@ -1,12 +1,14 @@
-import { pool } from "@workspace/db";
+import { Pool } from "pg";
 
-if (!process.env.IRAQ_ALAMEER_DATABASE_URL) {
+const databaseUrl = process.env.IRAQ_ALAMEER_DATABASE_URL;
+if (!databaseUrl) {
   throw new Error("IRAQ_ALAMEER_DATABASE_URL must be set before running this migration.");
 }
-if (process.env.DATABASE_URL && process.env.DATABASE_URL !== process.env.IRAQ_ALAMEER_DATABASE_URL) {
+if (process.env.DATABASE_URL && process.env.DATABASE_URL !== databaseUrl) {
   throw new Error("Run this migration with DATABASE_URL pointed at the Iraq Alameer database.");
 }
 
+const pool = new Pool({ connectionString: databaseUrl });
 try {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS iraq_attendance (
