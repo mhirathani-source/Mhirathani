@@ -3,6 +3,7 @@ import { MembershipError } from "./lib/membership";
 import { ZodError } from "zod/v4";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import iraqAttendanceRouter from "./routes/iraqAttendance";
 import { logger } from "./lib/logger";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -46,6 +47,9 @@ app.use(express.json({ limit: "13mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+if (process.env.IRAQ_INSTANCE === "1") {
+  app.use("/api/iraq/attendance", iraqAttendanceRouter);
+}
 app.use(((error, _req, res, _next) => {
   if (res.headersSent) return;
   if (error instanceof MembershipError) { res.status(error.status).json({ error: error.message, ...(error.canArchive ? {canArchive:true}: {}) }); return; }

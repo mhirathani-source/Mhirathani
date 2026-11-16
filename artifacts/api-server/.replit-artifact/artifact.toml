@@ -30,3 +30,30 @@ NODE_ENV = "production"
 
 [services.production.health.startup]
 path = "/api/healthz"
+
+
+[[services]]
+localPort = 8008
+name = "Iraq Alameer API"
+paths = ["/iraq-alameer-club/api"]
+
+[services.development]
+run = "pnpm --filter @workspace/api-server run dev:iraq"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/api-server", "run", "build:iraq"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/api-server/dist/iraq/index-iraq.mjs"]
+
+[services.production.run.env]
+PORT = "8008"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/iraq-alameer-club/api/healthz"
