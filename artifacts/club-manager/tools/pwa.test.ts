@@ -31,9 +31,9 @@ function worker() {
 test("manifest and actual PNGs meet installation requirements", async () => {
   const manifest = JSON.parse(await text("public/manifest.json"));
   assert.equal(manifest.name, "Prime Boxing Academy");
-  assert.equal(manifest.short_name, "Prime Academy");
+  assert.equal(manifest.short_name, "Prime");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.theme_color, "#FACC15");
+  assert.equal(manifest.theme_color, "#FFC107");
   assert.equal(manifest.background_color, "#FFFFFF");
   for (const size of [192,512]) {
     const png = await readFile(new URL(`public/icons/icon-${size}.png`, root));
