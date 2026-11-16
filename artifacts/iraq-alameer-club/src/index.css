@@ -650,6 +650,7 @@ button:disabled {opacity:.56;cursor:not-allowed}
 .download-header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:28px}.download-header .brand-lockup{padding:0}
 .download-card{max-width:670px;margin:0 auto;padding:30px}.download-card h1{font-size:30px}.download-card p,.download-card li{font-size:12px;line-height:2;color:hsl(var(--muted-foreground))}
 .download-card ol{padding-inline-start:22px;margin:20px 0}.download-footer{text-align:center;padding:20px;font-size:10px;color:hsl(var(--muted-foreground))}
+.download-card{max-width:900px}.download-layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;align-items:center;gap:28px}.download-copy{min-width:0}.download-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0}.download-qr{display:grid;justify-items:center;gap:10px;padding:18px;border:1px solid hsl(var(--border));border-radius:18px;background:linear-gradient(155deg,#edf5f1,#fff);text-align:center}.download-qr-image{width:192px;height:192px;display:grid;place-items:center;padding:8px;border-radius:14px;background:#fff;box-shadow:0 12px 28px #071a2f15}.download-qr-image img{width:100%;height:100%;object-fit:contain}.download-qr strong{font-size:12px}.download-qr small{max-width:190px;font-size:10px;line-height:1.8;color:hsl(var(--muted-foreground))}.install-steps{margin-top:16px;padding-top:14px;border-top:1px solid hsl(var(--border))}.install-steps summary{cursor:pointer;font-size:12px;font-weight:700}.install-steps ul{padding-inline-start:20px;margin:10px 0 0}.install-steps li{margin:4px 0}
 .notice.error .mini-action{margin-inline-start:12px}.member-payments .empty-block,.surface>.empty-block{border-top:1px solid hsl(var(--border)/.7)}.table-toolbar h2{color:hsl(var(--foreground))}
 .auth-stage .auth-card{max-height:calc(100dvh - 36px);overflow:auto}
 .rail-collapse svg{transform:rotate(90deg)}.rail-collapsed .rail-collapse svg{transform:rotate(-90deg)}
@@ -657,6 +658,7 @@ button:disabled {opacity:.56;cursor:not-allowed}
 .profile-actions .form-panel{margin:0}.profile-actions .notice{margin:8px 0}.profile-actions .notice .mini-action{margin-inline-start:10px}
 .title-tools>.primary-button,.title-tools>.outline-button{white-space:nowrap}
 @media(max-width:760px){
+  .download-shell{padding:18px 14px}.download-header{margin-bottom:18px}.download-card{padding:20px}.download-card h1{font-size:25px}.download-layout{grid-template-columns:1fr}.download-qr{width:min(100%,280px);justify-self:center}
   .rail-collapsed .side-rail{width:min(300px,86vw)}.rail-collapsed .brand-lockup span,.rail-collapsed .nav-caption,.rail-collapsed .rail-link span,.rail-collapsed .rail-link .nav-number,.rail-collapsed .rail-user>span:not(.avatar-mark){display:block}
   .rail-collapsed .brand-lockup{justify-content:flex-start;padding:4px 6px 22px}.rail-collapsed .rail-link{justify-content:flex-start;padding:0 12px}
   .title-tools{justify-content:flex-start}.report-controls{align-items:stretch;flex-direction:column}.report-controls .field{min-width:0}

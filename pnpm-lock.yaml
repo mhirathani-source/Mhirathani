@@ -470,6 +470,10 @@ importers:
         version: 3.25.76
 
   artifacts/iraq-alameer-club:
+    dependencies:
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
     devDependencies:
       '@clerk/localizations':
         specifier: ^4.24.0
@@ -585,6 +589,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.6
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0

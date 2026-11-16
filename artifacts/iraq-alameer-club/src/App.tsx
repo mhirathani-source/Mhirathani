@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient
 import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { arSA } from "@clerk/localizations";
+import QRCode from "qrcode";
 import {
   getGetClubSessionQueryKey, getGetFinancePeriodReportQueryKey,
   getGetFinanceReportQueryKey, getGetMemberQueryKey, getGetPaymentReceiptQueryKey, getGetCashRegisterQueryKey,
@@ -22,7 +23,7 @@ import {
   Activity, ArrowDownLeft, ArrowUpLeft, BadgeCheck, Banknote, Bell, ChartNoAxesCombined,
   Check, ChevronDown, ClipboardList, Clock3, CreditCard, Download, LayoutDashboard,
   LogOut, Menu, MessageCircle, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, Users,
-  Wallet, Tags, BriefcaseBusiness, UserRound, CircleHelp, ClipboardCheck,
+  Wallet, Tags, BriefcaseBusiness, UserRound, CircleHelp, ClipboardCheck, QrCode,
 } from "lucide-react";
 import { Link, Redirect, Route, Router, Switch, useLocation, useParams } from "wouter";
 
@@ -110,7 +111,7 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
     </aside>
     <main className="app-main">
-      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={() => setMobile(true)}><Menu size={17}/></button><span className="topbar-date">{new Intl.DateTimeFormat("ar-IQ", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Baghdad" }).format(new Date())}</span><span className="connection-state"><i/> مساحة النادي</span></div><div className="topbar-actions"><span className="topbar-user">{session.data?.role || "بوابة الإدارة"}</span><button type="button" className="icon-button" title="إعادة تحميل الجلسة" aria-label="تحديث الجلسة" onClick={() => void session.refetch()}><RefreshCw size={15}/></button></div></header>
+      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={() => setMobile(true)}><Menu size={17}/></button><span className="topbar-date">{new Intl.DateTimeFormat("ar-IQ", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Amman" }).format(new Date())}</span><span className="connection-state"><i/> مساحة النادي</span></div><div className="topbar-actions"><span className="topbar-user">{session.data?.role || "بوابة الإدارة"}</span><button type="button" className="icon-button" title="إعادة تحميل الجلسة" aria-label="تحديث الجلسة" onClick={() => void session.refetch()}><RefreshCw size={15}/></button></div></header>
       <section className="page-wrap">{children}</section>
     </main>
   </div>;
@@ -150,7 +151,7 @@ function Dashboard() {
   if (q.isError && !d) return <><PageTitle overline="نظرة عامة" title="لوحة النادي"/><ErrorBox message={errorText(q.error)} retry={() => q.refetch()}/></>;
   return <div className="dashboard-page">
     <PageTitle overline="مساحة عراق الأمير · الإدارة اليومية" title="صباح النادي يبدأ من هنا" subtitle="ملخص مباشر من سجلات النادي المحفوظة."><button className="outline-button" onClick={() => { void q.refetch(); void basic.refetch(); }}><RefreshCw size={14}/> تحديث</button><button className="outline-button" onClick={() => window.print()}><Printer size={14}/> طباعة</button></PageTitle>
-    <section className="hero-panel"><div className="hero-copy"><p className="eyebrow">IRAQ ALAMEER CLUB · AMMAN</p><h2>كل تفاصيل التشغيل،<br/>بصورة واحدة.</h2><p>تابع العضويات والتحصيلات والتنبيهات اليومية من مصدر واحد موثوق.</p><div className="hero-actions">{can("members.create") && <Link className="primary-button" href="/members"><Plus size={15}/> تسجيل مشترك</Link>}{can("subscriptions.create") && <Link className="outline-button hero-outline" href="/subscriptions"><BadgeCheck size={15}/> اشتراك جديد</Link>}</div></div><div className="hero-medal"><img src={logo} alt="شعار نادي عراق الأمير"/></div></section>
+    <section className="hero-panel"><div className="hero-copy"><p className="eyebrow">IRAQ ALAMEER CLUB</p><h2>كل تفاصيل التشغيل،<br/>بصورة واحدة.</h2><p>تابع العضويات والتحصيلات والتنبيهات اليومية من مصدر واحد موثوق.</p><div className="hero-actions">{can("members.create") && <Link className="primary-button" href="/members"><Plus size={15}/> تسجيل مشترك</Link>}{can("subscriptions.create") && <Link className="outline-button hero-outline" href="/subscriptions"><BadgeCheck size={15}/> اشتراك جديد</Link>}</div></div><div className="hero-medal"><img src={logo} alt="شعار نادي عراق الأمير"/></div></section>
     {d ? <>
       <div className="metric-grid">
         <StatCard icon={Users} title="إجمالي المشتركين" value={d.totalMembers.toLocaleString("ar-IQ")} note="كل السجلات المسجلة"/>
@@ -167,7 +168,7 @@ function Dashboard() {
           {d.expiringSubscriptions.length ? d.expiringSubscriptions.slice(0,5).map(row=><Link className="list-row" href={`/members/${row.memberId}`} key={row.subscriptionId}><span className="avatar-mark soft-mark">{row.memberName.slice(0,1)}</span><span className="list-row-main"><strong>{row.memberName}</strong><small>{row.planName} · {row.endDate}</small></span><Status value="active"/><ChevronDown size={14}/></Link>) : <Empty title="لا توجد عضويات قاربت على الانتهاء" detail="ستظهر التنبيهات هنا عند توفر سجلات منتهية قريبًا."/>}
         </div></section>
         <section className="surface"><div className="surface-head"><div><h2>أحدث التحصيلات</h2><p>آخر دفعات من سجل النادي</p></div><Link href="/subscriptions" className="panel-link">كل الاشتراكات</Link></div><div className="surface-body">
-          {d.recentPayments.length ? d.recentPayments.slice(0,5).map(p=><div className="list-row" key={p.paymentId}><span className="activity-dot"><Banknote size={15}/></span><span className="list-row-main"><strong>{p.memberName}</strong><small>{p.method} · {new Date(p.createdAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Baghdad"})}</small></span><strong><Money fils={p.amountFils}/></strong></div>) : <Empty title="لا توجد دفعات بعد" detail="لن تظهر أرقام افتراضية هنا."/>}
+          {d.recentPayments.length ? d.recentPayments.slice(0,5).map(p=><div className="list-row" key={p.paymentId}><span className="activity-dot"><Banknote size={15}/></span><span className="list-row-main"><strong>{p.memberName}</strong><small>{p.method} · {new Date(p.createdAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Amman"})}</small></span><strong><Money fils={p.amountFils}/></strong></div>) : <Empty title="لا توجد دفعات بعد" detail="لن تظهر أرقام افتراضية هنا."/>}
         </div></section>
       </div>
       <div className="grid-two">
@@ -211,7 +212,7 @@ function MembersPage() {
   {message&&<div className="notice">{message}</div>}
   {editing&&<section className="surface surface-pad"><MemberForm key={editing==="new"?"new":editing.id} member={editing==="new"?undefined:editing} onDone={()=>{setEditing(null);setMessage("تم حفظ بيانات المشترك.");}} onCancel={()=>setEditing(null)}/></section>}
   <section className="surface"><div className="table-toolbar"><div><h2>دليل المشتركين</h2><small>{q.data?`${q.data.length} ملفًا في النتائج`:"بيانات حية من النادي"}</small></div><label className="search-field"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="بحث بالاسم أو الهاتف"/></label></div>
-    {q.isLoading?<Loading label="تحميل المشتركين"/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>الاسم</th><th>الهاتف</th><th>تاريخ التسجيل</th><th>الحساب</th>{(canEdit||canDelete||can("subscriptions.create"))&&<th>الإجراءات</th>}</tr></thead><tbody>{q.data.map(m=><tr key={m.id}><td><Link className="member-link" href={`/members/${m.id}`}><span className="avatar-mark soft-mark">{m.name.slice(0,1)}</span><strong>{m.name}</strong></Link></td><td dir="ltr">{m.phone}</td><td>{new Date(m.joinedAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Baghdad"})}</td><td><Status value={m.active?"active":"suspended"}/></td>{(canEdit||canDelete||can("subscriptions.create"))&&<td><div className="row-tools">{canEdit&&<button className="mini-action" onClick={()=>setEditing(m)}>تعديل</button>}{canEdit&&<button className="mini-action" onClick={()=>toggle(m)}>{m.active?"أرشفة":"تفعيل"}</button>}{can("subscriptions.create")&&<Link href={`/subscriptions?memberId=${m.id}`} className="mini-action">اشتراك</Link>}{canDelete&&<button className="mini-action danger-text" onClick={()=>remove(m)}>حذف</button>}</div></td>}</tr>)}</tbody></table></div>:<Empty title={search?"لا توجد نتائج مطابقة":"لا يوجد مشتركون مسجلون"} detail={search?"جرّب اسمًا أو رقم هاتف مختلفًا.":"ابدأ بتسجيل أول مشترك؛ لا تُعرض سجلات تجريبية."}/>}</section></>;
+    {q.isLoading?<Loading label="تحميل المشتركين"/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>الاسم</th><th>الهاتف</th><th>تاريخ التسجيل</th><th>الحساب</th>{(canEdit||canDelete||can("subscriptions.create"))&&<th>الإجراءات</th>}</tr></thead><tbody>{q.data.map(m=><tr key={m.id}><td><Link className="member-link" href={`/members/${m.id}`}><span className="avatar-mark soft-mark">{m.name.slice(0,1)}</span><strong>{m.name}</strong></Link></td><td dir="ltr">{m.phone}</td><td>{new Date(m.joinedAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Amman"})}</td><td><Status value={m.active?"active":"suspended"}/></td>{(canEdit||canDelete||can("subscriptions.create"))&&<td><div className="row-tools">{canEdit&&<button className="mini-action" onClick={()=>setEditing(m)}>تعديل</button>}{canEdit&&<button className="mini-action" onClick={()=>toggle(m)}>{m.active?"أرشفة":"تفعيل"}</button>}{can("subscriptions.create")&&<Link href={`/subscriptions?memberId=${m.id}`} className="mini-action">اشتراك</Link>}{canDelete&&<button className="mini-action danger-text" onClick={()=>remove(m)}>حذف</button>}</div></td>}</tr>)}</tbody></table></div>:<Empty title={search?"لا توجد نتائج مطابقة":"لا يوجد مشتركون مسجلون"} detail={search?"جرّب اسمًا أو رقم هاتف مختلفًا.":"ابدأ بتسجيل أول مشترك؛ لا تُعرض سجلات تجريبية."}/>}</section></>;
 }
 
 function MemberDetail() {
@@ -255,7 +256,7 @@ function MemberReminderTools({memberId}:{memberId:number}) {
   if(!canView&&!canSend)return null;
   return <section className="surface member-payments"><div className="surface-head"><div><h2>تذكيرات واتساب</h2><p>الإرسال يخضع لإعداد النادي وحالة الربط الفعلية.</p></div>{canSend&&<button className="primary-button" disabled={send.isPending||global.isLoading||!global.data?.enabled||!global.data?.configured} onClick={()=>send.mutate()}><MessageCircle size={14}/>{send.isPending?"جارٍ التحقق والإرسال…":"إرسال تذكير"}</button>}</div>
     {send.isError&&<div className="surface-body"><ErrorBox message={errorText(send.error)}/></div>}{send.isSuccess&&<div className="surface-body"><div className="notice">تم إرسال الطلب. تحقق من سجل التذكيرات؛ قبول الطلب لا يؤكد التسليم.</div></div>}
-    {canView&&(logs.isLoading?<Loading/>:logs.isError?<div className="surface-body"><ErrorBox message={errorText(logs.error)} retry={()=>logs.refetch()}/></div>:logs.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>التاريخ</th><th>الموعد</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>{logs.data.map(log=><tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Baghdad"})}</td><td>{log.triggerDays.startsWith("manual:")?"يدوي":log.triggerDays==="0"?"يوم الانتهاء":`قبل الانتهاء بـ${log.triggerDays} يوم`}</td><td>{log.status==="accepted"?"قبلتها Meta":log.status==="failed"?"فشل":log.status==="queued"?"قيد المعالجة":log.status}</td><td>{log.error||"قبول الطلب لا يؤكد تسليم الرسالة"}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد تذكيرات مسجلة"/>)}
+    {canView&&(logs.isLoading?<Loading/>:logs.isError?<div className="surface-body"><ErrorBox message={errorText(logs.error)} retry={()=>logs.refetch()}/></div>:logs.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>التاريخ</th><th>الموعد</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>{logs.data.map(log=><tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Amman"})}</td><td>{log.triggerDays.startsWith("manual:")?"يدوي":log.triggerDays==="0"?"يوم الانتهاء":`قبل الانتهاء بـ${log.triggerDays} يوم`}</td><td>{log.status==="accepted"?"قبلتها Meta":log.status==="failed"?"فشل":log.status==="queued"?"قيد المعالجة":log.status}</td><td>{log.error||"قبول الطلب لا يؤكد تسليم الرسالة"}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد تذكيرات مسجلة"/>)}
     {canSend&&global.data&&!global.data.enabled&&<div className="surface-body"><p className="muted">إرسال التذكيرات متوقف حسب إعداد النادي.</p></div>}
   </section>;
 }
@@ -429,7 +430,7 @@ function FinancePage() {
       {activeTab==="categories"&&(categories.isLoading?<Loading/>:categories.isError?<div className="surface-body"><ErrorBox message={errorText(categories.error)} retry={()=>categories.refetch()}/></div>:categories.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>التصنيف</th><th>النوع</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>{categories.data.map(c=><tr key={c.id}><td>{c.name}</td><td>{c.kind==="income"?"إيراد":"مصروف"}</td><td><Status value={c.active?"active":"suspended"}/></td><td className="row-tools">{allowed("finance.edit")&&<><button className="mini-action" onClick={()=>{const name=window.prompt("اسم التصنيف",c.name)?.trim();if(name&&name!==c.name)updateCat.mutate({id:c.id,data:{name}},{onSuccess:()=>done("تم تحديث اسم التصنيف."),onError:fail});}}>تعديل الاسم</button><button className="mini-action" onClick={()=>updateCat.mutate({id:c.id,data:{active:!c.active}},{onSuccess:()=>done("تم تحديث حالة التصنيف."),onError:fail})}>{c.active?"إيقاف":"تفعيل"}</button></>}{allowed("finance.delete")&&<button className="mini-action danger-text" onClick={async()=>{if(!window.confirm(`حذف التصنيف «${c.name}»؟ إذا ارتبط بحركة فسيُؤرشف بدل الحذف.`))return;try{const result=await api<{archived:boolean}>(`/finance/categories/${c.id}`,{method:"DELETE"});done(result.archived?"تمت أرشفة التصنيف المرتبط بسجلات.":"تم حذف التصنيف.");}catch(e){fail(e);}}}>حذف</button>}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد تصنيفات مالية"/> )}
       {activeTab==="employees"&&(employees.isLoading?<Loading/>:employees.isError?<div className="surface-body"><ErrorBox message={errorText(employees.error)} retry={()=>employees.refetch()}/></div>:employees.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>الموظف</th><th>الوظيفة</th><th>الراتب الأساسي</th><th>مستحقات غير مدفوعة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>{employees.data.map(emp=><tr key={emp.id}><td>{emp.name}<small className="subline">{emp.phone||"لا يوجد هاتف"}</small></td><td>{emp.position}</td><td><Money fils={emp.baseSalaryFils}/></td><td><Money fils={emp.outstandingFils}/></td><td><Status value={emp.active?"active":"suspended"}/></td><td className="row-tools">{allowed("employees.edit")&&<><button className="mini-action" onClick={()=>{setEditEmployee(emp);setFormOpen(true);}}>تعديل</button><button className="mini-action" onClick={()=>updateEmployee.mutate({id:emp.id,data:{active:!emp.active}},{onSuccess:()=>done("تم تحديث حالة الموظف."),onError:fail})}>{emp.active?"إيقاف":"تفعيل"}</button></>}{allowed("employees.delete")&&<button className="mini-action danger-text" onClick={async()=>{if(!window.confirm(`حذف الموظف «${emp.name}»؟ قد يؤرشفه النظام إذا كان مرتبطًا برواتب.`))return;try{const result=await api<{archived:boolean}>(`/finance/employees/${emp.id}`,{method:"DELETE"});done(result.archived?"تمت أرشفة الموظف المرتبط بسجلات.":"تم حذف الموظف.");}catch(e){fail(e);}}}>حذف / أرشفة</button>}</td></tr>)}</tbody></table></div>:<Empty title="لا يوجد موظفون مسجلون"/> )}
       {activeTab==="payroll"&&(payroll.isLoading?<Loading/>:payroll.isError?<div className="surface-body"><ErrorBox message={errorText(payroll.error)} retry={()=>payroll.refetch()}/></div>:payroll.data?.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>الموظف</th><th>الفترة</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>{payroll.data.map(entry=><tr key={entry.id}><td>{entry.employeeName}</td><td>{entry.period}</td><td><Money fils={entry.amountFils}/></td><td><Money fils={entry.paidFils}/></td><td><Money fils={entry.outstandingFils}/></td><td>{entry.dueDate.slice(0,10)}</td><td><Status value={entry.status}/></td><td className="row-tools">{allowed("payroll.approve")&&entry.outstandingFils>0&&<button className="mini-action" onClick={()=>payEntry(entry.id,entry.outstandingFils)}>تسجيل صرف</button>}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد استحقاقات رواتب"/> )}
-      {activeTab==="cash"&&(cash.isLoading?<Loading/>:cash.isError?<div className="surface-body"><ErrorBox message={errorText(cash.error)} retry={()=>cash.refetch()}/></div>:cash.data?.movements.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>التاريخ</th><th>الاتجاه</th><th>الوصف</th><th>المبلغ</th><th>المرجع</th></tr></thead><tbody>{cash.data.movements.map(m=><tr key={m.id}><td>{new Date(m.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Baghdad"})}</td><td><Status value={m.direction==="in"?"active":"due"}/></td><td>{m.description}</td><td><Money fils={m.amountFils}/></td><td>{m.referenceType||"—"}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد حركات في الصندوق"/> )}
+      {activeTab==="cash"&&(cash.isLoading?<Loading/>:cash.isError?<div className="surface-body"><ErrorBox message={errorText(cash.error)} retry={()=>cash.refetch()}/></div>:cash.data?.movements.length?<div className="table-scroll"><table className="data-table"><thead><tr><th>التاريخ</th><th>الاتجاه</th><th>الوصف</th><th>المبلغ</th><th>المرجع</th></tr></thead><tbody>{cash.data.movements.map(m=><tr key={m.id}><td>{new Date(m.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Amman"})}</td><td><Status value={m.direction==="in"?"active":"due"}/></td><td>{m.description}</td><td><Money fils={m.amountFils}/></td><td>{m.referenceType||"—"}</td></tr>)}</tbody></table></div>:<Empty title="لا توجد حركات في الصندوق"/> )}
     </section>}
     {reverse&&<div className="confirm-overlay"><form className="confirm-card" onSubmit={e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get("reason")||"").trim();if(reason.length<3){setError("اكتب سببًا من ثلاثة أحرف على الأقل.");return;}void reverseTransaction(reverse,reason);}}><h2>عكس حركة مالية</h2><p>سيُسجل قيد عكسي محفوظ، ولن تُحذف الحركة الأصلية. المبلغ: <Money fils={reverse.amountFils}/></p><label className="field">سبب العكس<input name="reason" required minLength={3} maxLength={500}/></label><div className="form-actions"><button className="danger-button">تأكيد العكس</button><button className="outline-button" type="button" onClick={()=>setReverse(null)}>إلغاء</button></div></form></div>}
   </>;
@@ -464,7 +465,7 @@ function ReceiptPage() {
   return <><PageTitle overline="إيصال دفع محفوظ" title={`إيصال ${r.receiptNumber}`}><button className="primary-button no-print" onClick={()=>window.print()}><Printer size={15}/> طباعة الإيصال</button></PageTitle><article className="receipt-sheet">
     <div className="receipt-brand"><img src={logo} alt="شعار نادي عراق الأمير"/><div><h2>نادي عراق الأمير</h2><p>إيصال دفع · سجل مالي معتمد</p></div></div>
     <div className="receipt-amount">المبلغ المستلم<strong>{jod(r.amountFils)} <small>{r.currency}</small></strong></div>
-    <div className="receipt-lines"><div className="receipt-line"><span>رقم الإيصال</span><strong>{r.receiptNumber}</strong></div><div className="receipt-line"><span>اسم المشترك</span><strong>{r.memberName}</strong></div><div className="receipt-line"><span>رقم الهاتف</span><strong dir="ltr">{r.memberPhone}</strong></div><div className="receipt-line"><span>الباقة</span><strong>{r.planName}</strong></div><div className="receipt-line"><span>طريقة الدفع</span><strong>{r.method}</strong></div><div className="receipt-line"><span>التاريخ</span><strong>{new Intl.DateTimeFormat("ar-IQ",{dateStyle:"long",timeStyle:"short",timeZone:"Asia/Baghdad"}).format(new Date(r.createdAt))}</strong></div></div>
+    <div className="receipt-lines"><div className="receipt-line"><span>رقم الإيصال</span><strong>{r.receiptNumber}</strong></div><div className="receipt-line"><span>اسم المشترك</span><strong>{r.memberName}</strong></div><div className="receipt-line"><span>رقم الهاتف</span><strong dir="ltr">{r.memberPhone}</strong></div><div className="receipt-line"><span>الباقة</span><strong>{r.planName}</strong></div><div className="receipt-line"><span>طريقة الدفع</span><strong>{r.method}</strong></div><div className="receipt-line"><span>التاريخ</span><strong>{new Intl.DateTimeFormat("ar-IQ",{dateStyle:"long",timeStyle:"short",timeZone:"Asia/Amman"}).format(new Date(r.createdAt))}</strong></div></div>
     <p className="receipt-footnote">هذا الإيصال يعرض تفاصيل المعاملة المحفوظة في نظام النادي. العملة والقيمة كما وردتا من النظام المالي.</p>
   </article></>;
 }
@@ -572,7 +573,7 @@ function AdminUsers() {
 function AdminUserCard({user,roles,catalog,busy,onSave}:{user:AdminUser;roles:AdminRole[];catalog:PermissionEntry[];busy:boolean;onSave:(body:object)=>void}) {
   const [role,setRole]=useState(user.role||"staff"),[overrides,setOverrides]=useState<Record<string,boolean>>(user.permissionOverrides||{}),[expanded,setExpanded]=useState(false);
   const sections=[...new Set(catalog.filter(c=>!["settings","users","roles","backups","audit","security"].includes(c.section)).map(c=>c.section))];
-  return <article className="admin-card"><div className="admin-user-head"><div><h3>{user.displayName||user.email}{user.isOwner?" · المالك":""}</h3><small>{user.email} · {new Date(user.createdAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Baghdad"})}</small></div><Status value={user.status}/></div>
+  return <article className="admin-card"><div className="admin-user-head"><div><h3>{user.displayName||user.email}{user.isOwner?" · المالك":""}</h3><small>{user.email} · {new Date(user.createdAt).toLocaleDateString("ar-IQ",{timeZone:"Asia/Amman"})}</small></div><Status value={user.status}/></div>
     {!user.isOwner&&<><div className="row-tools admin-user-actions"><select value={role} onChange={e=>setRole(e.target.value)}>{roles.map(r=><option key={r.name} value={r.name}>{r.label}</option>)}</select>
       {user.status==="pending"&&<><button className="primary-button" disabled={busy} onClick={()=>onSave({status:"active",role,permissionOverrides:overrides})}>موافقة</button><button className="outline-button" disabled={busy} onClick={()=>window.confirm("رفض طلب هذا الحساب؟")&&onSave({status:"rejected"})}>رفض</button></>}
       {user.status==="active"&&<><button className="outline-button" disabled={busy} onClick={()=>onSave({role,permissionOverrides:overrides})}>حفظ الصلاحيات</button><button className="outline-button" disabled={busy} onClick={()=>window.confirm("إيقاف هذا الحساب؟")&&onSave({status:"suspended"})}>إيقاف</button></>}
@@ -611,7 +612,7 @@ function AdminBackups() {
   async function readFile(file?:File){if(!file)return;if(file.size>12*1024*1024){setErr("الملف أكبر من 12 ميغابايت.");return;}try{importBackup.mutate(await file.text());}catch(e){setErr(errorText(e));}}
   return <><div className="notice warning">النسخ المشفرة داخل النظام لا تغني عن الاحتفاظ بنسخة خارجية آمنة. لا تُدخل أسرار الخادم أو مفاتيح التشفير في الواجهة.</div>{err&&<ErrorBox message={err}/ >}{ok&&<div className="notice">{ok}</div>}
     <section className="surface surface-pad backup-create"><h2>نسخة جديدة</h2><div className="backup-actions"><input className="admin-inline-input" placeholder="وصف اختياري" value={label} onChange={e=>setLabel(e.target.value)}/><button className="primary-button" disabled={create.isPending} onClick={()=>create.mutate()}>{create.isPending?"جارٍ الإنشاء…":"إنشاء نسخة مشفرة"}</button><label className="outline-button">استيراد نسخة<input type="file" accept=".json,application/json" hidden onChange={e=>{void readFile(e.target.files?.[0]);e.target.value="";}}/></label></div></section>
-    <section className="surface"><div className="surface-head"><h2>النسخ المتاحة</h2></div>{q.isLoading?<Loading/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.length?q.data.map(b=><article className="admin-card backup-card" key={b.id}><div><h3>نسخة #{b.id} · {b.label}</h3><small>{new Date(b.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Baghdad"})} · {b.createdBy} · {(b.bytes/1024).toFixed(1)} ك.ب</small><p className="muted">{Object.entries(b.counts).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p></div><div className="row-tools"><button className="outline-button" onClick={()=>void downloadApi(`/club/admin/backups/${b.id}/file`,`iraq-alameer-backup-${b.id}.json`).catch(e=>setErr(errorText(e)))}>تنزيل</button><button className="outline-button" disabled={previewMutation.isPending} onClick={()=>previewMutation.mutate(b)}>معاينة الاستعادة</button></div></article>):<Empty title="لا توجد نسخ محفوظة"/>}</section>
+    <section className="surface"><div className="surface-head"><h2>النسخ المتاحة</h2></div>{q.isLoading?<Loading/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.length?q.data.map(b=><article className="admin-card backup-card" key={b.id}><div><h3>نسخة #{b.id} · {b.label}</h3><small>{new Date(b.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Amman"})} · {b.createdBy} · {(b.bytes/1024).toFixed(1)} ك.ب</small><p className="muted">{Object.entries(b.counts).map(([k,v])=>`${k}: ${v}`).join(" · ")}</p></div><div className="row-tools"><button className="outline-button" onClick={()=>void downloadApi(`/club/admin/backups/${b.id}/file`,`iraq-alameer-backup-${b.id}.json`).catch(e=>setErr(errorText(e)))}>تنزيل</button><button className="outline-button" disabled={previewMutation.isPending} onClick={()=>previewMutation.mutate(b)}>معاينة الاستعادة</button></div></article>):<Empty title="لا توجد نسخ محفوظة"/>}</section>
     {selected&&preview&&<section className="surface surface-pad restore-panel"><h2>معاينة الاستعادة · النسخة #{selected.id}</h2><div className="notice warning">{preview.warning}</div><div className="table-scroll"><table className="data-table"><thead><tr><th>السجل</th><th>الحالي</th><th>في النسخة</th></tr></thead><tbody>{Object.entries(preview.changes).map(([key,value])=><tr key={key}><td>{key}</td><td>{value.current}</td><td>{value.backup}</td></tr>)}</tbody></table></div><p>اكتب <strong>استعادة {selected.id}</strong> للتأكيد. سيُنشئ النظام نسخة تلقائية قبل الاستعادة.</p><input className="admin-inline-input" value={typed} onChange={e=>setTyped(e.target.value)} aria-label="عبارة التأكيد"/><label className="admin-check"><input type="checkbox" checked={sure} onChange={e=>setSure(e.target.checked)}/>أفهم أن البيانات الحالية ستُستبدل</label><div className="form-actions"><button className="danger-button" disabled={restore.isPending||typed.trim()!==`استعادة ${selected.id}`||!sure} onClick={()=>restore.mutate()}>{restore.isPending?"جارٍ الاستعادة…":"استعادة الآن"}</button><button className="outline-button" onClick={()=>{setSelected(null);setPreview(null);}}>إلغاء</button></div></section>}
   </>;
 }
@@ -620,7 +621,7 @@ function AdminAudit() {
   const [page,setPage]=useState(1),[search,setSearch]=useState(""),[expanded,setExpanded]=useState<number|null>(null);
   const q=useQuery({queryKey:["admin","audit",page,search],queryFn:()=>api<AuditResponse>(`/club/admin/audit?page=${page}&search=${encodeURIComponent(search)}`)});
   return <section className="surface"><div className="table-toolbar"><div><h2>سجل التدقيق</h2><small>سجل العمليات الإدارية المحفوظ</small></div><label className="search-field"><Search size={14}/><input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="بحث في السجل"/></label><button className="outline-button" onClick={()=>void downloadApi("/club/admin/audit?format=csv","iraq-alameer-audit.csv")}>تصدير CSV</button></div>
-    {q.isLoading?<Loading/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.items.length?q.data.items.map(item=><article className="admin-card audit-row" key={item.id}><div><h3>{item.action}</h3><small>{item.actorName||"النظام"} · {item.entityType}{item.entityId?` #${item.entityId}`:""} · {new Date(item.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Baghdad"})}</small></div><button className="mini-action" onClick={()=>setExpanded(expanded===item.id?null:item.id)}>{expanded===item.id?"إخفاء":"التفاصيل"}</button>{expanded===item.id&&<pre className="audit-json">{JSON.stringify(item.details,null,2)}</pre>}</article>):<Empty title="لا توجد سجلات تدقيق"/>}
+    {q.isLoading?<Loading/>:q.isError?<div className="surface-body"><ErrorBox message={errorText(q.error)} retry={()=>q.refetch()}/></div>:q.data?.items.length?q.data.items.map(item=><article className="admin-card audit-row" key={item.id}><div><h3>{item.action}</h3><small>{item.actorName||"النظام"} · {item.entityType}{item.entityId?` #${item.entityId}`:""} · {new Date(item.createdAt).toLocaleString("ar-IQ",{timeZone:"Asia/Amman"})}</small></div><button className="mini-action" onClick={()=>setExpanded(expanded===item.id?null:item.id)}>{expanded===item.id?"إخفاء":"التفاصيل"}</button>{expanded===item.id&&<pre className="audit-json">{JSON.stringify(item.details,null,2)}</pre>}</article>):<Empty title="لا توجد سجلات تدقيق"/>}
     {q.data&&<div className="pagination"><button className="outline-button" disabled={page<=1} onClick={()=>setPage(page-1)}>السابق</button><span>صفحة {q.data.page} من {Math.max(1,Math.ceil(q.data.total/20))}</span><button className="outline-button" disabled={page*20>=q.data.total} onClick={()=>setPage(page+1)}>التالي</button></div>}
   </section>;
 }
@@ -688,7 +689,85 @@ function ReceiptRoute() {
   return isSignedIn?<Protected permissions={["payments.view"]}><ReceiptPage/></Protected>:<Redirect to="/sign-in"/>;
 }
 function DownloadPage() {
-  return <main className="download-shell" dir="rtl"><header className="download-header"><Link href="/" className="brand-lockup"><img src={logo} alt="شعار النادي"/><span><strong>IRAQ ALAMEER CLUB</strong><small>بوابة إدارة النادي</small></span></Link><Link className="outline-button" href="/sign-in">تسجيل الدخول</Link></header><section className="surface download-card"><p className="eyebrow">تطبيق النادي</p><h1>وصول من الشاشة الرئيسية</h1><p>يمكن تثبيت واجهة النادي كتطبيق ويب تقدمي من قائمة المتصفح. يلزم اتصال بالإنترنت وحساب معتمد للوصول إلى سجلات النادي.</p><ol><li>افتح الصفحة في Safari أو Chrome.</li><li>اختر «إضافة إلى الشاشة الرئيسية» من قائمة المشاركة أو المتصفح.</li><li>سجّل الدخول بحساب النادي المعتمد بعد فتح التطبيق.</li></ol><Link className="primary-button" href="/sign-in">فتح بوابة النادي</Link></section><footer className="download-footer">إدارة نادي عراق الأمير · البيانات محفوظة في نظام النادي</footer></main>;
+  type InstallPrompt = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+  };
+  const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
+  const [ios, setIos] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const [qr, setQr] = useState("");
+  const [message, setMessage] = useState("");
+  const installUrl = `${window.location.origin}${base}/download`;
+
+  useEffect(() => {
+    const nav = navigator as Navigator & { standalone?: boolean };
+    setIos(/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+    setInstalled(window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true);
+    const onPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPrompt);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallPrompt(null);
+      setMessage("تم تثبيت التطبيق على هذا الجهاز.");
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    void QRCode.toDataURL(installUrl, {
+      width: 176,
+      margin: 1,
+      color: { dark: "#071A2F", light: "#FFFFFF" },
+    }).then(setQr).catch(() => setQr(""));
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, [installUrl]);
+
+  async function install() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    setMessage(choice.outcome === "accepted" ? "بدأ تثبيت التطبيق." : "يمكنك التثبيت لاحقًا من قائمة المتصفح.");
+    setInstallPrompt(null);
+  }
+
+  return <main className="download-shell" dir="rtl">
+    <header className="download-header"><Link href="/" className="brand-lockup"><img src={logo} alt="شعار النادي"/><span><strong>IRAQ ALAMEER CLUB</strong><small>بوابة إدارة النادي</small></span></Link><Link className="outline-button" href="/sign-in">تسجيل الدخول</Link></header>
+    <section className="surface download-card">
+      <div className="download-layout">
+        <div className="download-copy">
+          <p className="eyebrow">تطبيق النادي</p><h1>وصول سريع من الشاشة الرئيسية</h1>
+          <p>أضف بوابة النادي إلى هاتفك أو جهازك اللوحي أو الكمبيوتر. يتطلب تسجيل الدخول والاطلاع على السجلات اتصالًا بالإنترنت.</p>
+          <div className="download-actions">
+            <button className="primary-button" disabled={installed || !installPrompt} onClick={() => void install()}>
+              <Download size={16}/>{installed ? "التطبيق مثبت بالفعل" : installPrompt ? "تثبيت التطبيق" : "التثبيت من قائمة المتصفح"}
+            </button>
+            <Link className="outline-button" href="/sign-in">فتح بوابة النادي</Link>
+          </div>
+          {message && <div className="notice">{message}</div>}
+          {ios && <div className="notice">على iPhone وiPad: افتح الصفحة في Safari، ثم اضغط مشاركة واختر «إضافة إلى الشاشة الرئيسية».</div>}
+          {!ios && !installPrompt && !installed && <div className="notice">إذا لم يظهر زر التثبيت، افتح قائمة Chrome أو المتصفح واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».</div>}
+          <details className="install-steps" open={ios}>
+            <summary>خطوات التثبيت حسب الجهاز</summary>
+            <ul>
+              <li><strong>Android:</strong> استخدم زر التثبيت عند ظهوره، أو قائمة Chrome ثم «تثبيت التطبيق».</li>
+              <li><strong>iPhone وiPad:</strong> في Safari اختر مشاركة ثم «إضافة إلى الشاشة الرئيسية».</li>
+              <li><strong>الكمبيوتر:</strong> استخدم رمز التثبيت في شريط عنوان المتصفح أو خيار التثبيت في القائمة.</li>
+            </ul>
+          </details>
+        </div>
+        <aside className="download-qr">
+          <div className="download-qr-image">{qr ? <img src={qr} alt="رمز QR لفتح صفحة تثبيت نادي عراق الأمير"/> : <QrCode size={70}/>}</div>
+          <strong>امسح الرمز لفتح صفحة التثبيت</strong>
+          <small>سيحتاج تسجيل الدخول والبيانات إلى اتصال بالإنترنت.</small>
+        </aside>
+      </div>
+    </section>
+    <footer className="download-footer">إدارة نادي عراق الأمير · سجلات النادي لا تُخزّن دون اتصال</footer>
+  </main>;
 }
 function App() {
   return <QueryClientProvider client={queryClient}><ClerkProvider publishableKey={clerkKey} proxyUrl={clerkProxyUrl} signInUrl={`${base}/sign-in`} signUpUrl={`${base}/sign-up`} localization={arSA}><Router base={base}><Routes/></Router></ClerkProvider></QueryClientProvider>;
