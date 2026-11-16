@@ -5,12 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "dev:iraq": "export NODE_ENV=development && pnpm run build:iraq && pnpm run start:iraq",
     "build": "node ./build.mjs",
-    "build:iraq": "node ./build-iraq.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "start:iraq": "node --enable-source-maps ./dist/iraq/index-iraq.mjs",
-    "migrate:iraq:attendance": "node ./src/iraq-migrate.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -24,7 +20,6 @@
     "drizzle-orm": "catalog:",
     "express": "^5.3.0",
     "http-proxy-middleware": "^4.2.0",
-    "pg": "^8.23.0",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
     "zod": "catalog:"

@@ -52,14 +52,6 @@ export function getClerkProxyHost(req: {
   return firstHop || req.headers.host?.trim() || undefined;
 }
 
-function getClerkProxyPath(req: { originalUrl?: string }): string {
-  const originalUrl = req.originalUrl ?? "";
-  const markerIndex = originalUrl.indexOf(CLERK_PROXY_PATH);
-  return markerIndex >= 0
-    ? originalUrl.slice(0, markerIndex + CLERK_PROXY_PATH.length)
-    : CLERK_PROXY_PATH;
-}
-
 export function clerkProxyMiddleware(): RequestHandler {
   // Only run proxy in production — Clerk proxying doesn't work for dev instances
   if (process.env.NODE_ENV !== 'production') {
@@ -83,7 +75,7 @@ export function clerkProxyMiddleware(): RequestHandler {
       proxyReq: (proxyReq, req) => {
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = getClerkProxyHost(req) || '';
-        const proxyUrl = `${protocol}://${host}${getClerkProxyPath(req)}`;
+        const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
 
         proxyReq.setHeader('Clerk-Proxy-Url', proxyUrl);
         proxyReq.setHeader('Clerk-Secret-Key', secretKey);

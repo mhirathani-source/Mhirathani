@@ -5,4 +5,3 @@
 - [Public mobile installation](mobile-install-policy.md) — Owner approved a public install page, not public access to club records or financial data.
 - [بيئة بناء Android](android-build-environment.md) — فهرس حزم النظام لا يضمن إتاحة سمات SDK؛ غياب السمة لا يمنع بناء APK بأدوات Google الرسمية.
 - [Publish role rollout](publish-schema-role-seeding.md) — Publish applies schema before role seeding; preserve legacy access without startup DDL.
-- [حد الخطة لعراق الأمير](iraq-alameer-plan-limit.md) — ابقَ على الخطة الحالية Free ولا تنتقل إلى Power.

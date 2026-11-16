@@ -15,8 +15,7 @@ export const clubSettingsSchema = z.object({
 }).strict();
 export type ClubSettings = z.infer<typeof clubSettingsSchema>;
 export const defaultClubSettings: ClubSettings = {
-  clubName: process.env.IRAQ_INSTANCE === "1" ? "نادي عراق الأمير" : "Prime Boxing Academy",
-  currency: "JOD", timezone: "Asia/Amman",
+  clubName: "Prime Boxing Academy", currency: "JOD", timezone: "Asia/Amman",
   memberRequiredFields: ["name", "phone"], paymentMethods: ["cash", "card", "bank_transfer", "wallet"],
   maxDiscountPercent: 100, financialYearStartMonth: 1, reminderDays: [2, 0], renewalPolicy: "after_end",
 };
