@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, date, index, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, date, index, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const membersTable = pgTable(
@@ -15,7 +15,7 @@ export const membersTable = pgTable(
     active: boolean("active").notNull().default(true),
   },
   (table) => [
-    uniqueIndex("members_phone_idx").on(table.phone),
+    index("members_phone_idx").on(table.phone),
     index("members_name_idx").on(table.name),
   ],
 );

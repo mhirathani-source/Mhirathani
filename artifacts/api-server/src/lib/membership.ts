@@ -3,7 +3,7 @@ import {
   subscriptionsTable, financialTransactionsTable, whatsappReminderLogsTable,
 } from "@workspace/db";
 import type { CreateSubscriptionBody, UpdateSubscriptionBody, ActOnSubscriptionBody } from "@workspace/api-zod";
-import { and, eq, ne, lte, gte } from "drizzle-orm";
+import { and, eq, ne, lte, gte, ilike, or } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
 import { readClubSettings } from "./clubSettings";
 
@@ -15,6 +15,23 @@ type ActionInput = ReturnType<typeof ActOnSubscriptionBody.parse>;
 
 export class MembershipError extends Error {
   constructor(public status: number, message: string, public canArchive = false) { super(message); }
+}
+
+export function buildMemberSearch(search: string) {
+  const value = search.trim();
+  const phone = value.replace(/[()\s-]/g, "");
+  const exactPhone = /^\+?\d{7,15}$/.test(phone);
+  return {
+    exactPhone,
+    condition: or(
+      ilike(membersTable.name, `%${value}%`),
+      exactPhone ? eq(membersTable.phone, phone) : ilike(membersTable.phone, `%${phone}%`),
+    ),
+  };
+}
+
+export function memberSearchLimit(search: string | undefined, limit: number) {
+  return search && buildMemberSearch(search).exactPhone ? undefined : limit;
 }
 
 export function jordanToday() {

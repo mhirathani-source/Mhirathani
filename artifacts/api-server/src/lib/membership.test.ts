@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { CreateMemberBody, CreateMemberResponse, CreateSubscriptionBody, UpdateSubscriptionBody } from "@workspace/api-zod";
-import { addCalendarDays, MembershipError, normalizedMemberBody, validCalendarDate } from "./membership";
+import { addCalendarDays, buildMemberSearch, memberSearchLimit, MembershipError, normalizedMemberBody, validCalendarDate } from "./membership";
 
 test("calendar validation rejects rollover, timestamps and non-calendar input", () => {
   assert.equal(validCalendarDate("2024-02-29"), true);
@@ -21,6 +21,13 @@ test("member validation trims text, normalizes phone and explicitly clears optio
     assert.throws(() => normalizedMemberBody(body), MembershipError);
   }
   assert.equal(CreateMemberBody.safeParse(normalizedMemberBody({ name: "  ", phone: "0790000001" })).success, false);
+});
+
+test("member phone search normalizes formatting and distinguishes full numbers", () => {
+  assert.equal(buildMemberSearch("079 (123)-4567").exactPhone, true);
+  assert.equal(buildMemberSearch("079 123").exactPhone, false);
+  assert.equal(memberSearchLimit("079 (123)-4567", 1), undefined);
+  assert.equal(memberSearchLimit("079 123", 1), 1);
 });
 
 test("member calendar field survives response validation without timestamp conversion", () => {

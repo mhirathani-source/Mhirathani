@@ -48,7 +48,7 @@ import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { requireClubUser, requireAdmin, resolveClubUser } from "../middlewares/clubAuth";
 import { GetClubOverviewResponse, GetMemberProfileParams, GetMemberProfileResponse } from "@workspace/api-zod";
-import { addSubscriptionPayment as addPayment, deleteUnlinkedMember, startSubscription, correctSubscription, subscriptionAction, MembershipError, membershipErrorHandler, normalizedMemberBody, validCalendarDate } from "../lib/membership";
+import { addSubscriptionPayment as addPayment, buildMemberSearch, deleteUnlinkedMember, memberSearchLimit, startSubscription, correctSubscription, subscriptionAction, MembershipError, membershipErrorHandler, normalizedMemberBody, validCalendarDate } from "../lib/membership";
 import { effectivePermissions } from "../lib/permissions";
 import { readClubSettings } from "../lib/clubSettings";
 import { isIndependentCashMovement, signedPayment } from "../lib/cashLedger";
@@ -168,9 +168,14 @@ router.get("/members", requireClubUser, async (req, res): Promise<void> => {
   const query = ListMembersQueryParams.safeParse(req.query);
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
   const search = query.data.search?.trim();
-  const rows = await db.select().from(membersTable)
-    .where(search ? or(ilike(membersTable.name, `%${search}%`), ilike(membersTable.phone, `%${search}%`)) : undefined)
-    .orderBy(desc(membersTable.joinedAt)).limit(query.data.limit ?? 50);
+  const memberSearch = search ? buildMemberSearch(search) : undefined;
+  const memberQuery = db.select().from(membersTable)
+    .where(memberSearch?.condition)
+    .orderBy(desc(membersTable.joinedAt));
+  const resultLimit = memberSearchLimit(search, query.data.limit ?? 50);
+  const rows = resultLimit === undefined
+    ? await memberQuery
+    : await memberQuery.limit(resultLimit);
   res.json(ListMembersResponse.parse(rows.map((m) => ({ ...m, joinedAt: m.joinedAt.toISOString() }))));
 });
 
