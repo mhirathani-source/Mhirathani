@@ -27,3 +27,4 @@ packages = ["jdk21", "android-tools"]
 
 [userenv.shared]
 CLUB_ADMIN_EMAIL = "Mhirathani@gmail.com"
+CLERK_PROXY_URL = "/api/__clerk"

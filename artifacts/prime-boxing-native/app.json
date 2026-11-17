@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Prime Boxing Academy",
+    "slug": "prime-boxing-native",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "primeboxingacademy",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121c17"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.primeboxingacademy.app"
+    },
+    "android": {
+      "package": "com.primeboxingacademy.app",
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#dbb961"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#121c17"
+        }
+      ],
+      "expo-sharing"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
