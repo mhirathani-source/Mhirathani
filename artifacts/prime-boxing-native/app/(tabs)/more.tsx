@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useClerk } from '@clerk/expo';
+import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -92,6 +93,7 @@ function MenuItem({
 export default function MoreScreen() {
   const queryClient = useQueryClient();
   const { signOut } = useClerk();
+  const router = useRouter();
   const colors = useColors();
   const { session, can } = useClubAccess();
   const [section, setSection] = useState<Section>('home');
@@ -111,6 +113,11 @@ export default function MoreScreen() {
   const [payrollPeriod, setPayrollPeriod] = useState(currentPeriod());
   const [payrollDueDate, setPayrollDueDate] = useState(jordanToday());
   const [formError, setFormError] = useState('');
+  const logout = async () => {
+    await signOut();
+    queryClient.clear();
+    router.replace('/');
+  };
 
   const plans = useListPlans({ query: { enabled: section === 'plans' && can('plans.view') } });
   const financeReport = useGetFinancePeriodReport(
@@ -324,7 +331,7 @@ export default function MoreScreen() {
             icon="log-out-outline"
             onPress={() => Alert.alert('تسجيل الخروج', 'هل تريد إنهاء الجلسة؟', [
               { text: 'إلغاء', style: 'cancel' },
-              { text: 'تسجيل الخروج', style: 'destructive', onPress: () => signOut() },
+              { text: 'تسجيل الخروج', style: 'destructive', onPress: () => void logout() },
             ])}
           />
         </>
@@ -502,7 +509,7 @@ export default function MoreScreen() {
           <Card>
             <SectionTitle title="حماية الحساب" subtitle="كل طلب بيانات يمر عبر API وصلاحيات الخادم." />
             <Text muted style={styles.help}>لا تُخزن بيانات مالية أو سجلات المشتركين على الهاتف للعمل دون اتصال. يلزم الإنترنت لعرض البيانات وتعديلها.</Text>
-            <ActionButton title="تسجيل الخروج" variant="outline" icon="log-out-outline" onPress={() => signOut()} />
+            <ActionButton title="تسجيل الخروج" variant="outline" icon="log-out-outline" onPress={() => void logout()} />
           </Card>
         </>
       ) : null}

@@ -14,7 +14,7 @@ import {
 } from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { ClerkProvider, useAuth } from '@clerk/expo';
+import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { StatusBar } from 'expo-status-bar';
 import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
@@ -31,7 +31,11 @@ if (apiDomain) {
 
 function AuthTokenBridge({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, userId } = useAuth();
-  setAuthTokenGetter(isSignedIn ? () => getToken() : null);
+
+  useEffect(() => {
+    setAuthTokenGetter(isSignedIn ? () => getToken() : null);
+    return () => setAuthTokenGetter(null);
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
     queryClient.clear();
@@ -84,20 +88,22 @@ export default function RootLayout() {
       tokenCache={tokenCache}
       proxyUrl={process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined}
     >
-      <SafeAreaProvider>
-        <ErrorBoundary>
-          <QueryClientProvider client={queryClient}>
-            <AuthTokenBridge>
-              <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-                <KeyboardProvider>
-                  <StatusBar style="light" />
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </AuthTokenBridge>
-          </QueryClientProvider>
-        </ErrorBoundary>
-      </SafeAreaProvider>
+      <ClerkLoaded>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <AuthTokenBridge>
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+                  <KeyboardProvider>
+                    <StatusBar style="light" />
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </AuthTokenBridge>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </ClerkLoaded>
     </ClerkProvider>
   );
 }

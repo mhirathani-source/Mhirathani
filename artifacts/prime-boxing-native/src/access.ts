@@ -1,7 +1,7 @@
 import { useGetClubSession } from '@workspace/api-client-react';
 
-export function useClubAccess() {
-  const query = useGetClubSession();
+export function useClubAccess(enabled = true) {
+  const query = useGetClubSession({ query: { enabled } });
   const session = query.data;
   const isOwner = session?.status === 'active' && session.isOwner;
   const can = (...permissions: string[]) =>

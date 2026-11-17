@@ -1,14 +1,17 @@
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { useAuth } from '@clerk/expo';
 import { useClubAccess } from '@/src/access';
 import { useColors } from '@/hooks/useColors';
 import { Text } from '@/components/prime-ui';
 
 export default function TabsLayout() {
-  const { data: session, isLoading, error, can } = useClubAccess();
+  const { isSignedIn } = useAuth();
+  const { data: session, isLoading, error, can } = useClubAccess(isSignedIn === true);
   const colors = useColors();
 
+  if (!isSignedIn) return <Redirect href="/sign-in" />;
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -17,7 +20,7 @@ export default function TabsLayout() {
       </View>
     );
   }
-  if (error) return <Redirect href="/(auth)/sign-in" />;
+  if (error) return <Redirect href="/sign-in" />;
   if (session?.status !== 'active') return <Redirect href="/(auth)/pending" />;
 
   return (
@@ -37,7 +40,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="dashboard"
         options={{
           title: 'الرئيسية',
           href: can('dashboard.view') ? undefined : null,

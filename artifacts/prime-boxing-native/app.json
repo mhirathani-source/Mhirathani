@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "primeboxingacademy",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121c17"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.primeboxingacademy.app"
@@ -22,8 +17,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#dbb961"
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png",

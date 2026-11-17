@@ -5,6 +5,27 @@ import { useAuth, useSignIn } from '@clerk/expo';
 import { ActionButton, AppScreen, Card, Field, Text, errorMessage } from '@/components/prime-ui';
 import { useColors } from '@/hooks/useColors';
 
+function AuthForm({
+  children,
+  onSubmit,
+}: {
+  children: React.ReactNode;
+  onSubmit: () => Promise<void>;
+}) {
+  if (Platform.OS !== 'web') return <View>{children}</View>;
+  return React.createElement(
+    'form',
+    {
+      onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        void onSubmit();
+      },
+      style: { display: 'flex', flexDirection: 'column', gap: 12 },
+    },
+    children,
+  );
+}
+
 export default function SignInScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -18,7 +39,7 @@ export default function SignInScreen() {
   const busy = fetchStatus === 'fetching';
 
   useEffect(() => {
-    if (isSignedIn) router.replace('/(tabs)');
+    if (isSignedIn) router.replace('/(tabs)/dashboard');
   }, [isSignedIn, router]);
 
   const finishSignIn = async () => {
@@ -84,8 +105,9 @@ export default function SignInScreen() {
           <Text muted style={styles.description}>
             {clientTrust ? 'أدخل رمز التحقق الذي أُرسل إلى بريدك الإلكتروني.' : 'استخدم بيانات حساب الأكاديمية للوصول الآمن.'}
           </Text>
-          {!clientTrust ? (
-            <>
+          <AuthForm onSubmit={clientTrust ? verifyCode : submit}>
+            {!clientTrust ? (
+              <>
               <Field
                 label="البريد الإلكتروني"
                 value={emailAddress}
@@ -107,8 +129,8 @@ export default function SignInScreen() {
               />
               <ActionButton title="دخول آمن" icon="lock-closed-outline" loading={busy} disabled={!emailAddress || !password} onPress={submit} />
             </>
-          ) : (
-            <>
+            ) : (
+              <>
               <Field
                 label="رمز التحقق"
                 value={code}
@@ -122,12 +144,13 @@ export default function SignInScreen() {
               <ActionButton title="تأكيد الرمز" icon="shield-checkmark-outline" loading={busy} disabled={!code} onPress={verifyCode} />
               <ActionButton title="إعادة إرسال الرمز" variant="outline" disabled={busy} onPress={() => signIn.mfa.sendEmailCode()} />
             </>
-          )}
-          {message || errors?.fields?.identifier?.message ? (
-            <Text color={colors.destructive} style={styles.error}>
-              {message || errors?.fields?.identifier?.message}
-            </Text>
-          ) : null}
+            )}
+            {message || errors?.fields?.identifier?.message ? (
+              <Text color={colors.destructive} style={styles.error}>
+                {message || errors?.fields?.identifier?.message}
+              </Text>
+            ) : null}
+          </AuthForm>
           {!clientTrust ? (
             <View style={styles.signUpLine}>
               <Text muted>لا تملك حسابًا؟ </Text>
