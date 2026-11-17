@@ -3,6 +3,7 @@
 # compiled output
 dist
 /generated-artifacts/
+/artifacts/prime-boxing-native/static-build/
 tmp
 out-tsc
 *.tsbuildinfo
