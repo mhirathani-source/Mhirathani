@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     // Hosted, online-only app: retain the website's same-origin API and Clerk
     // session rather than copying financial data or tokens into a local shell.
-    url: 'https://prime-boxing-academy.replit.app/',
+    url: 'https://Prime1academy.replit.app/',
     errorPath: 'offline.html',
     androidScheme: 'https',
     // WKWebView cannot register http/https as its local URL scheme.
