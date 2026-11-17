@@ -7,7 +7,6 @@ import { effectivePermissions, permissionCatalog, validPermissionNames } from ".
 import { clubSettingsSchema, readClubSettings } from "../lib/clubSettings";
 import { createBackup, getBackup, importBackup, listBackups, previewRestore, restoreBackup } from "../lib/backups";
 import { MembershipError } from "../lib/membership";
-import {readWhatsAppSettings, writeWhatsAppSettings} from "../lib/whatsapp";
 
 const router = Router();
 router.use("/club/admin", requireOwner);
@@ -140,18 +139,11 @@ router.get("/club/admin/audit", async (req, res) => {
 router.get("/club/admin/security", (_req, res) => {
   res.json({ authProvider: "Clerk", requiresApproval: true, financialDefault: "deny", ownerProtected: true, backupEncryption: "AES-256-GCM", backupAvailable: !!process.env.SESSION_SECRET, sessionPolicySource: "Clerk" });
 });
-router.get("/club/admin/whatsapp-reminders", async (_req,res) => {
-  const {enabled,configured}=await readWhatsAppSettings();
-  res.json({enabled,configured});
+router.get("/club/admin/whatsapp-reminders", (_req,res) => {
+  res.json({enabled:false,configured:false,mode:"manual"});
 });
-router.put("/club/admin/whatsapp-reminders", async (req,res) => {
-  const input=z.object({enabled:z.boolean()}).strict().safeParse(req.body);
-  if(!input.success)throw new MembershipError(400,"حالة التذكيرات غير صحيحة");
-  const settings=await readWhatsAppSettings();
-  if(input.data.enabled&&!settings.configured)throw new MembershipError(400,"التذكيرات معطلة حتى تضيف إعدادات Meta إلى Secrets وتجهز القوالب المعتمدة");
-  await writeWhatsAppSettings({...settings,enabled:input.data.enabled});
-  await db.insert(auditLogTable).values({actorId:req.clubUser!.clerkUserId,action:"whatsapp.settings_updated",entityType:"system_setting",details:{before:{enabled:settings.enabled},after:input.data}});
-  res.json({enabled:input.data.enabled,configured:settings.configured});
+router.put("/club/admin/whatsapp-reminders", (_req,res) => {
+  res.status(409).json({error:"واتساب يعمل يدويًا عبر رابط المحادثة؛ الإرسال التلقائي عبر WhatsApp Business متوقف."});
 });
 router.get("/club/admin/backups", async (_req, res) => { res.json(await listBackups()); });
 router.post("/club/admin/backups", async (req, res) => {
