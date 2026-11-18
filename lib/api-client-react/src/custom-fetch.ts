@@ -78,6 +78,14 @@ function resolveUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
+function isApiUrl(value: string): boolean {
+  try {
+    return new URL(value, "https://api.local").pathname.startsWith("/api/");
+  } catch {
+    return false;
+  }
+}
+
 function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   const headers = new Headers();
 
@@ -196,6 +204,32 @@ export class ApiError<T = unknown> extends Error {
     this.response = response;
     this.method = requestInfo.method;
     this.url = response.url || requestInfo.url;
+  }
+}
+
+export class ApiUnexpectedResponseError extends Error {
+  readonly name = "ApiUnexpectedResponseError";
+  readonly reason: "redirect" | "html";
+  readonly status: number;
+  readonly method: string;
+  readonly url: string;
+
+  constructor(
+    reason: "redirect" | "html",
+    response: Response,
+    requestInfo: { method: string; url: string },
+  ) {
+    const path = requestInfo.url.split(/[?#]/, 1)[0];
+    super(
+      reason === "redirect"
+        ? `API ${requestInfo.method} ${path} was redirected to an access page (HTTP ${response.status}).`
+        : `API ${requestInfo.method} ${path} returned HTML instead of JSON (HTTP ${response.status}).`,
+    );
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.reason = reason;
+    this.status = response.status;
+    this.method = requestInfo.method;
+    this.url = path;
   }
 }
 
@@ -360,7 +394,28 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const response = await fetch(input, {
+    ...init,
+    credentials: init.credentials ?? "same-origin",
+    method,
+    headers,
+  });
+
+  const isApiRequest = isApiUrl(requestInfo.url);
+  if (
+    isApiRequest &&
+    (response.redirected || (response.status >= 300 && response.status < 400))
+  ) {
+    throw new ApiUnexpectedResponseError("redirect", response, requestInfo);
+  }
+  if (
+    isApiRequest &&
+    response.ok &&
+    responseType === "auto" &&
+    getMediaType(response.headers) === "text/html"
+  ) {
+    throw new ApiUnexpectedResponseError("html", response, requestInfo);
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
