@@ -234,7 +234,7 @@ function Protected({ children, ownerOnly = false, permissions = [], anyPermissio
 function RoleDashboard() {
   const hasFinanceDashboard = useAccess().can("payments.view", "reports.view", "members.view");
   return hasFinanceDashboard
-    ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardErrorBoundary><DashboardPage/></DashboardErrorBoundary></Suspense>
+    ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardPage/></Suspense>
     : <StaffDashboard/>;
 }
 
@@ -361,7 +361,7 @@ function MainRouter() {
   return <Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={AuthPages}/><Route path="/sign-up/*?" component={AuthPages}/>
     <Route path="/admin"><Protected ownerOnly><AdminPage/></Protected></Route>
     <Route path="/account"><Protected><UserProfile routing="hash"/></Protected></Route>
-    <Route path="/dashboard"><Protected permissions={["dashboard.view"]}><RoleDashboard/></Protected></Route>
+    <Route path="/dashboard"><DashboardErrorBoundary><Protected permissions={["dashboard.view"]}><RoleDashboard/></Protected></DashboardErrorBoundary></Route>
     <Route path="/members"><Protected permissions={["members.view"]}><Members/></Protected></Route>
     <Route path="/members/:id"><Protected permissions={["members.view"]}><RoleMemberDetail/></Protected></Route>
     <Route path="/plans"><Protected permissions={["plans.view"]}><PlansPage/></Protected></Route>
