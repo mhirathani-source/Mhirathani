@@ -1,8 +1,8 @@
 import {strict as assert} from "node:assert";
 import {after,test} from "node:test";
 import {randomUUID} from "node:crypto";
-import {eq,sql} from "drizzle-orm";
-import {db,pool,clubUsersTable,rolesTable,systemSettingsTable} from "@workspace/db";
+import {and,eq,sql} from "drizzle-orm";
+import {db,pool,clubUsersTable,rolePermissionsTable,rolesTable,systemSettingsTable} from "@workspace/db";
 import {initializeAccessModelInTransaction} from "./accessSetup";
 
 after(()=>pool.end());
@@ -31,6 +31,9 @@ test("schema-only publish preserves legacy accounts and never approves later sig
       const [staff]=await trx.select().from(clubUsersTable).where(eq(clubUsersTable.id,-2));
       assert.equal(staff.status,"active");assert.deepEqual(staff.permissionOverrides,{});
       assert.equal((await trx.select().from(rolesTable)).length,4);
+       const adminPermissions=new Set((await trx.select().from(rolePermissionsTable).where(eq(rolePermissionsTable.roleName,"admin"))).map(row=>row.permissionName));
+       for(const permission of ["dashboard.view","members.view","subscriptions.view","payments.view","payments.create","finance.view","employees.view","payroll.view","reports.view"]) assert.ok(adminPermissions.has(permission),`admin role should include ${permission}`);
+       await trx.delete(rolePermissionsTable).where(and(eq(rolePermissionsTable.roleName,"admin"),eq(rolePermissionsTable.permissionName,"reports.view")));
       await trx.insert(clubUsersTable).values({id:-3,clerkUserId:"later_signup",email:"new@example.invalid",role:"staff"});
       await trx.update(clubUsersTable).set({status:"suspended"}).where(eq(clubUsersTable.id,-2));
       await initializeAccessModelInTransaction(trx);
@@ -38,7 +41,9 @@ test("schema-only publish preserves legacy accounts and never approves later sig
       assert.equal(pending.status,"pending");assert.deepEqual(pending.permissionOverrides,{});
       const [suspended]=await trx.select().from(clubUsersTable).where(eq(clubUsersTable.id,-2));
       assert.equal(suspended.status,"suspended");
+       assert.equal((await trx.select().from(rolePermissionsTable).where(and(eq(rolePermissionsTable.roleName,"admin"),eq(rolePermissionsTable.permissionName,"reports.view")))).length,0,"later initialization must preserve deliberate role revocation");
       assert.equal((await trx.select().from(systemSettingsTable).where(eq(systemSettingsTable.key,"access_model.v1"))).length,1);
+       assert.equal((await trx.select().from(systemSettingsTable).where(eq(systemSettingsTable.key,"role.admin_dashboard.v1"))).length,1);
       throw rollback;
     });
   }catch(error){if(error!==rollback)throw error;}
