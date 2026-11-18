@@ -187,11 +187,14 @@ function AppShell({ children }: { children: ReactNode }) {
      <nav className="mobile-nav" aria-label="التنقل السريع">
        {mobilePrimaryItems.map(({href,title,icon:Icon})=><Link key={href} href={href} title={title} aria-current={location===href?"page":undefined} className={location===href?"active":""}><Icon size={19}/><small>{title}</small></Link>)}
        <button type="button" className={`mobile-more-trigger ${mobileMoreOpen?"active":""}`} aria-haspopup="menu" aria-expanded={mobileMoreOpen} aria-controls="mobile-more-menu" onClick={()=>setMobileMoreOpen(v=>!v)}><MoreHorizontal size={20}/><small>المزيد</small></button>
-       {mobileMoreOpen && <div className="mobile-more-menu" id="mobile-more-menu" role="menu" aria-label="بقية صفحات الأكاديمية">
+     </nav>
+     {mobileMoreOpen && <>
+       <button type="button" className="mobile-more-backdrop" aria-label="إغلاق قائمة المزيد" onClick={()=>setMobileMoreOpen(false)} />
+       <div className="mobile-more-menu" id="mobile-more-menu" role="menu" aria-label="بقية صفحات الأكاديمية">
          {mobileMoreItems.map(({href,title,icon:Icon})=>{const active=location===href||(href==="/members"&&location.startsWith("/members/"));return <Link key={href} role="menuitem" href={href} aria-current={active?"page":undefined} className={active?"active":""} onClick={()=>setMobileMoreOpen(false)}><Icon size={18}/><span>{title}</span></Link>;})}
          <Link role="menuitem" href="/account" className={location==="/account"?"active":""} onClick={()=>setMobileMoreOpen(false)}><UserRound size={18}/><span>إعدادات حسابي</span></Link>
-       </div>}
-     </nav>
+       </div>
+     </>}
   </div>;
 }
 
