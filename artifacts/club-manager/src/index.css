@@ -1261,3 +1261,10 @@ body { min-width:320px; background:hsl(var(--background)); color:hsl(var(--foreg
   .page-content { padding-inline:10px; }
   .page-heading .button { min-height:40px; }
 }
+
+/* Finance figures and the mobile brand must not retain light-mode ink colors. */
+.dark .mobile-brand { color:hsl(var(--foreground)); }
+.dark .finance-metric > strong { color:hsl(var(--foreground)); }
+.dark .finance-list-row { border-color:hsl(var(--border)); }
+.dark .finance-list-row strong:not(.finance-amount) { color:hsl(var(--foreground)); }
+.dark .finance-list-row small { color:hsl(var(--muted-foreground)); }
