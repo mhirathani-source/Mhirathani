@@ -1,8 +1,7 @@
-- [تذكيرات واتساب](reminder-requirements.md) — الوضع المختار يدوي عبر رابط واتساب العادي؛ لا إرسال مجدول ولا تأكيد تسليم.
+- [مواعيد التذكيرات](reminder-requirements.md) — يومان ويوم الانتهاء وللمنتهي غير المجدد؛ جهّز الكود دون انتظار Meta وأبقِ التفعيل OFF.
 - [تاريخ المشترك المالي](member-history-policy.md) — سياسة المستخدم: الحفاظ على المدفوعات والديون والسجلات المرتبطة، وتقديم الأرشفة بدل الحذف غير الآمن.
 - [Financial access policy](financial-access-policy.md) — Owner has full access; other accounts need explicit section/action grants, enforced on the server.
 - [V2 demo boundary](v2-demo-boundary.md) — User chose an independent local-state demo; preserve the real system and keep demo roles and data isolated.
 - [Public mobile installation](mobile-install-policy.md) — Owner approved a public install page, not public access to club records or financial data.
 - [بيئة بناء Android](android-build-environment.md) — فهرس حزم النظام لا يضمن إتاحة سمات SDK؛ غياب السمة لا يمنع بناء APK بأدوات Google الرسمية.
 - [Publish role rollout](publish-schema-role-seeding.md) — Publish applies schema before role seeding; preserve legacy access without startup DDL.
-- [Deployment access boundary](deployment-access-policy.md) — Keep Replit Shield password protection and retain Clerk plus server-side permissions for club data.

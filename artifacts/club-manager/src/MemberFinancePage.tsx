@@ -19,6 +19,6 @@ export function MemberFinancePage(){
         {payment.kind==="payment"&&<><Link className="mini-button" href={`/receipt/${payment.id}`}>عرض الإيصال</Link>{payment.reversed?<span className="status-pill muted">عُكست الدفعة</span>:<PaymentReverseButton paymentId={payment.id} receiptNumber={payment.receiptNumber} amountFils={payment.amountFils} onDone={()=>void query.refetch()}/>}</>}
       </td></tr>)}</tbody></table></div>}
     </section>
-    <MemberReminderTools memberId={member.id} memberName={member.name} phone={member.phone}/>
+    <MemberReminderTools memberId={member.id}/>
   </>;
 }

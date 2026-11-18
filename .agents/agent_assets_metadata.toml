@@ -42,17 +42,3 @@ mtime_ms = 1792767777325
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/0b72e2f9-c21f-4d83-95e3-1cd2e6a935aa/f7099c06-8554-40c8-a852-8e89df869e9e"
 storage_version_token = "1792767937771242"
 content_type = "text/markdown"
-
-[[outputs]]
-id = "YM3zt67Al2HFPRgkp3x9W"
-uri = "file://generated-artifacts/android/Prime-Boxing-Academy-1.1-debug.apk"
-type = "unspecified"
-title = "Prime Boxing Academy — Android APK"
-description = "APK تجريبي قابل للتثبيت على Android، الإصدار 1.1، الحزمة com.primeboxingacademy.app. يتصل بموقع النظام الحي عبر HTTPS ويحتاج إلى الإنترنت."
-logical_id = "09cacd50-bdfa-4ab7-8382-b1ad51a05ebb"
-content_hash = "sha256:1979d95da1490fb07ff5a4efa62bceaad4bbdea12ce41298f57df994ac5c6d74"
-size = 5117165
-mtime_ms = 1794911012708
-storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/09cacd50-bdfa-4ab7-8382-b1ad51a05ebb/65d234a4-e437-4e13-88a0-a73cff2c22d9"
-storage_version_token = "1794911047711775"
-content_type = "application/octet-stream"

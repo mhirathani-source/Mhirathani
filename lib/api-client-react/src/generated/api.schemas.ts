@@ -131,54 +131,6 @@ export interface ClubDashboard {
   recentPayments: ClubDashboardRecentPayment[];
 }
 
-export interface OperationalPlan {
-  id: number;
-  name: string;
-  durationDays: number;
-  active: boolean;
-}
-
-export type OperationalSubscriptionStatus = typeof OperationalSubscriptionStatus[keyof typeof OperationalSubscriptionStatus];
-
-
-export const OperationalSubscriptionStatus = {
-  active: 'active',
-  paused: 'paused',
-  expired: 'expired',
-  cancelled: 'cancelled',
-} as const;
-
-export interface OperationalSubscription {
-  id: number;
-  memberId: number;
-  memberName: string;
-  planId: number;
-  planName: string;
-  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
-  startDate: string;
-  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
-  endDate: string;
-  status: OperationalSubscriptionStatus;
-}
-
-export interface OperationalSubscriptionInput {
-  /** @minimum 1 */
-  memberId: number;
-  /** @minimum 1 */
-  planId: number;
-  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
-  startDate: string;
-}
-
-export interface OperationalSubscriptionUpdate {
-  /** @minimum 1 */
-  planId?: number;
-  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
-  startDate?: string;
-  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
-  endDate?: string;
-}
-
 export interface MemberInput {
   /**
      * @minLength 2
@@ -924,11 +876,6 @@ export type GetClubOverview200 = {
   activeMembers: number;
   endingSoon: number;
   expiredSubscriptions: number;
-};
-
-export type ListOperationalSubscriptionsParams = {
-  /** @minimum 1 */
-  memberId?: number;
 };
 
 export type ListMembersParams = {

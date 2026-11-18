@@ -95,12 +95,6 @@ function formatJodAxis(fils: number) {
   return jod.toLocaleString("ar-JO", { maximumFractionDigits: 0 });
 }
 
-function apiResponseIssue(error: unknown): "redirect" | "html" | null {
-  if (!(error instanceof Error) || error.name !== "ApiUnexpectedResponseError") return null;
-  const reason = (error as Error & { reason?: unknown }).reason;
-  return reason === "redirect" || reason === "html" ? reason : null;
-}
-
 function escapeCsvCell(value: string | number) {
   const raw = String(value);
   const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
@@ -213,8 +207,6 @@ export function DashboardPage() {
   const finance = useGetFinanceReport({ from, to: today });
   const summary = dashboard.data;
   const financeReport = finance.data;
-  const dashboardApiIssue = apiResponseIssue(dashboard.error);
-  const financeApiIssue = apiResponseIssue(finance.error);
   const initialLoading = dashboard.isLoading || dashboard.isFetching || finance.isLoading || finance.isFetching;
   const updatedAt = Math.max(dashboard.dataUpdatedAt || 0, finance.dataUpdatedAt || 0);
   const lastUpdated = updatedAt
@@ -272,19 +264,12 @@ export function DashboardPage() {
   };
 
   if (initialLoading && !summary) return <SkeletonDashboard />;
-  if ((dashboard.isError && !summary) || (dashboard.isSuccess && !summary)) {
-    const dashboardErrorMessage = dashboardApiIssue
-      ? dashboardApiIssue === "redirect"
-        ? "تم تحويل طلب بيانات اللوحة إلى صفحة حماية بدل واجهة API. افتح التطبيق واجتز حماية النشر ثم أعد المحاولة."
-        : "أعاد الخادم صفحة HTML بدل بيانات لوحة التحكم."
-      : dashboard.isSuccess
-        ? "أعاد الخادم استجابة بلا بيانات لوحة صالحة."
-        : "تحقق من الاتصال والصلاحيات، ثم أعد المحاولة.";
+  if (dashboard.isError && !summary) {
     return (
       <div className="prime-dashboard-error" role="alert">
         <Activity size={24} />
         <h1>تعذر تحميل لوحة التحكم</h1>
-        <p>{dashboardErrorMessage}</p>
+        <p>تحقق من الاتصال والصلاحيات، ثم أعد المحاولة.</p>
         <button type="button" className="prime-action-button primary" onClick={() => void refresh()} data-testid="button-dashboard-retry">
           <RefreshCw size={15} /> إعادة المحاولة
         </button>
@@ -322,11 +307,6 @@ export function DashboardPage() {
   const monthlyExpenses = financeReport?.expensesFils ?? currentMonth?.expensesFils ?? 0;
   const monthlyNet = financeReport?.netFils ?? currentMonth?.netFils ?? (monthlyIncome - monthlyExpenses);
   const reportError = finance.isError && !financeReport;
-  const reportErrorMessage = financeApiIssue
-    ? financeApiIssue === "redirect"
-      ? "تم تحويل طلب التقرير المالي إلى صفحة حماية بدل واجهة API."
-      : "أعاد الخادم صفحة HTML بدل بيانات التقرير المالي."
-    : "تعذر تحميل تقرير الفترة؛ يعرض الرسم ملخص السجلات المتاح.";
 
   return (
     <div className="prime-dashboard" dir="rtl">
@@ -443,7 +423,7 @@ export function DashboardPage() {
                 testId="button-export-finance-chart"
               />
             </div>
-            {reportError && <p className="dashboard-inline-error" role="alert">{reportErrorMessage}</p>}
+            {reportError && <p className="dashboard-inline-error" role="alert">تعذر تحميل تقرير الفترة؛ يعرض الرسم ملخص السجلات المتاح.</p>}
             <div className="finance-chart-summary">
               <div><strong><Money fils={monthlyIncome} /></strong><small>الإيرادات المحصلة</small></div>
               <span className={`month-change ${incomeChange === null ? "neutral" : incomeChange >= 0 ? "positive" : "negative"}`}>

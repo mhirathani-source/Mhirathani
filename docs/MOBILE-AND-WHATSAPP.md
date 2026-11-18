@@ -29,19 +29,29 @@ Only public assets and the safe offline page are cached. Login, API, membership,
 - The previously generated debug APK predates this change and must not be presented as this updated native version.
 - Before distribution, test login, renewal/payment forms, logout, external sign-in providers and network recovery on real Android/iOS devices. Browser-based PWA checks do not prove native OAuth compatibility.
 
-## WhatsApp: manual ordinary-app mode
+## WhatsApp: OFF by default
 
-Member reminders open a `wa.me` chat with a prefilled Arabic message. A staff member reviews it and presses Send in ordinary WhatsApp or WhatsApp Web.
+Server-only adapter: `api/whatsapp/reminders.js`, used by the existing database-backed sender/scheduler. It is not a publicly accessible unauthenticated sending endpoint.
 
-There is no automatic or scheduled sending, and the application cannot confirm delivery or record new manual sends. Existing Business settings, templates, credentials and historical reminder logs remain stored; the app no longer uses or changes them.
+The owner has a switch in **لوحة التحكم والإعدادات → الإعدادات العامة → تذكيرات واتساب**. The persisted default is OFF. Missing credentials are a normal disabled state and do not prevent compilation or startup.
 
-The old server-side Meta adapter remains dormant for compatibility, but application routes reject Business template/settings changes and API sends. The scheduler is a no-op. Do not describe the old adapter tests as proof that live messages are enabled.
+Later add these through Replit Secrets, including the production environment:
 
-The settings page explains the manual flow. A valid phone number is required; Jordanian local mobile numbers are normalized for the chat link. No database migration or data cleanup is required.
+- `META_WHATSAPP_TOKEN`
+- `META_PHONE_NUMBER_ID`
+
+Never paste the token into chat, a frontend environment variable or the settings UI. Re-publish after changing production configuration if required by Publishing, and turn the owner switch ON only after preparing Meta-approved Arabic templates.
+
+The expired-membership template is `prime_subscription_expired` (`ar`) with three body parameters: member name, plan name and subscription end date. Other existing templates support two days before expiry, the expiry day and manual reminders. With direct Meta credentials, Meta enforces template approval; the UI's draft status is not a claim of approval. A WABA ID remains useful for submitting and synchronizing template statuses through the existing settings page.
+
+The scheduler skips renewed, paused, cancelled and archived members as applicable. It selects only the latest eligible expired contract per member, uses database deduplication, and logs accepted/failed requests. Accepted does not mean delivered. Failed/uncertain requests are not automatically retried in a way that might send duplicates; delivery webhooks and managed retry policy remain part of the existing official WhatsApp rollout.
+
+The scheduler runs while the API process is running and does not require a signed-in manager. Autoscale can sleep, so guaranteed timed delivery still needs an always-running service or an authenticated external scheduler. No live messages were sent during this implementation.
 
 ## Verification
 
-- Club manager and API server TypeScript checks, plus API server build.
-- `node --experimental-strip-types --test artifacts/club-manager/tests/whatsappLink.test.ts`: Jordanian and international phone normalization and prefilled link construction.
-- `/api/healthz` returned HTTP 200 after restart.
-- The public sign-in page loaded. The browser preview was not authenticated, so the signed-in member screen was verified by code/type checks rather than visual interaction.
+- Both frontend and backend TypeScript checks and production builds.
+- `node --test api/whatsapp/reminders.test.cjs`: OFF/no-credentials performs zero requests, mocked official template payload, explicit errors and expired-contract selection.
+- `node artifacts/club-manager/tools/check-mobile.mjs`: manifest, icon sizes, install-event capture, sensitive-route worker bypass and native host configuration.
+- Admin HTTP integration checks reject staff access and reject enabling an unconfigured sender.
+- Capacitor sync for Android/iOS. This does not replace real-device release acceptance.

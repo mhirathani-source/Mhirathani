@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ClerkProvider, SignIn, SignUp, UserProfile, useAuth, useClerk, useUser } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { arSA } from "@clerk/localizations";
@@ -23,8 +23,6 @@ import { OperationalSubscriptions } from "./OperationalSubscriptions";
 import { PlansPage } from "./PlansPage";
 import { MemberFinancePage } from "./MemberFinancePage";
 import { ThemeToggle } from "./components/theme-toggle";
-import { ErrorBoundary } from "./components/error-boundary";
-import { buildWhatsAppChatUrl, buildWhatsAppReminderMessage } from "./whatsappLink";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const DashboardPage = lazy(() => import("./DashboardPage").then((module) => ({ default: module.DashboardPage })));
@@ -237,39 +235,6 @@ function RoleDashboard() {
     ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardPage/></Suspense>
     : <StaffDashboard/>;
 }
-
-function DashboardErrorBoundary({ children }: { children: ReactNode }) {
-  const { getToken } = useAuth();
-  return (
-    <ErrorBoundary
-      onError={async (error, info) => {
-        const token = await getToken();
-        if (!token) return;
-        const response = await fetch(`${basePath}/api/club/client-errors`, {
-          method: "POST",
-          credentials: "same-origin",
-          keepalive: true,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: error.name,
-            message: error.message,
-            stack: error.stack ?? "",
-            componentStack: info.componentStack ?? "",
-            pathname: stripBase(window.location.pathname),
-          }),
-        });
-        if (!response.ok) {
-          console.warn("Dashboard diagnostic report rejected:", response.status);
-        }
-      }}
-    >
-      {children}
-    </ErrorBoundary>
-  );
-}
 function RoleMemberDetail() { return useAccess().can("members.view", "subscriptions.view", "payments.view") ? <MemberFinancePage/> : <StaffMemberDetail/>; }
 function RoleSubscriptions() { return useAccess().can("payments.view", "plans.view", "members.view") ? <Subscriptions/> : <OperationalSubscriptions/>; }
 
@@ -330,23 +295,42 @@ function FinancePage() {
   </>;
 }
 
+type WhatsAppSettingsView={wabaId:string;phoneNumberId:string;enabled:boolean;configured:boolean;templates:{id:number;name:string;body:string;status:string;providerTemplateName:string|null}[]};
 function WhatsAppSettingsPage() {
-  return <><PageHeading eyebrow="إرسال يدوي" title="واتساب العادي"/>
-    <div className="panel notice-panel"><strong>الإرسال عبر واتساب العادي يدوي فقط</strong><p>زر التذكير في ملف المشترك يفتح واتساب برسالة جاهزة. يراجع الموظف الرسالة ثم يضغط إرسال داخل واتساب.</p></div>
-    <div className="panel form-panel"><h2>ما الذي يعمل؟</h2><p>يمكن فتح محادثة فردية من ملف المشترك على الهاتف أو عبر WhatsApp Web على الكمبيوتر. لا يرسل النظام الرسائل تلقائيًا ولا يستقبل حالة التسليم.</p><p className="muted">إعدادات وقوالب WhatsApp Business السابقة محفوظة كما هي في قاعدة البيانات، لكنها متوقفة عن الاستخدام. سجل الرسائل السابقة متاح للقراءة.</p></div>
-  </>;
+  const {can}=useAccess();
+  const [settings,setSettings]=useState<WhatsAppSettingsView|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const load=()=>clubApi<WhatsAppSettingsView>("/club/whatsapp/settings").then(setSettings).catch(e=>setError(e.message)).finally(()=>setLoading(false));
+  useEffect(()=>{void load();},[]);
+  async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setBusy(true);setError("");try{const result=await clubApi<WhatsAppSettingsView>("/club/whatsapp/settings",{method:"PUT",body:JSON.stringify({wabaId:String(f.get("wabaId")),phoneNumberId:String(f.get("phoneNumberId")),enabled:f.get("enabled")==="on"})});setSettings(current=>current?{...current,...result}:current);}catch(e){setError(e instanceof Error?e.message:"تعذر الحفظ");}finally{setBusy(false);}}
+  async function createTemplate(key:string,body:string){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/create",{method:"POST",body:JSON.stringify({key,body})});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر إرسال القالب للمراجعة");}finally{setBusy(false);}}
+  async function syncTemplates(){setBusy(true);setError("");try{await clubApi("/club/whatsapp/templates/sync",{method:"POST"});await load();}catch(e){setError(e instanceof Error?e.message:"تعذر تحديث حالة القوالب");}finally{setBusy(false);}}
+  const templateInfo=[["expiry_2_days","قبل الانتهاء بيومين"],["expiry_today","يوم الانتهاء"],["manual","تذكير يدوي"],["expiry_custom","مواعيد التذكير المخصصة"],["expiry_expired","اشتراك منتهٍ لم يُجدّد"]] as const;
+  if(!can("whatsapp.edit"))return <><PageHeading eyebrow="عرض فقط" title="حالة WhatsApp Business"/>{error&&<div className="error-panel">{error}</div>}{loading?<p>جارٍ التحميل…</p>:<div className="panel form-panel"><h2>إعدادات الربط</h2><p>{settings?.enabled?"التذكيرات مفعّلة في الإعدادات؛ يلزم اتصال وقوالب معتمدة":"التذكيرات معطلة"}</p><p>حالة القوالب: {settings?.templates.map(t=>`${t.providerTemplateName}: ${t.status}`).join("، ")||"لا توجد قوالب"}</p><p>تعديل الربط والقوالب يحتاج صلاحية تعديل واتساب.</p></div>}</>;
+  return <><PageHeading eyebrow="ربط Meta الرسمي" title="إعدادات WhatsApp Business"/><div className="panel notice-panel"><strong>حالة التذكيرات: {settings?.enabled?"مطلوب التفعيل بعد التحقق من Meta":"الإرسال معطّل"}</strong><p>يتطلب رقم حساب WhatsApp Business، ومعرّف رقم الهاتف، وقوالب عربية معتمدة من Meta واتصالًا صالحًا. قبول الرسالة من Meta لا يعني تسليمها للهاتف.</p></div>
+    {loading?<div className="loading-panel">جارٍ تحميل الإعدادات…</div>:<><form className="panel form-panel" onSubmit={save}><h2>بيانات الحساب</h2><div className="form-grid"><label>معرّف حساب WhatsApp Business (اختياري عند استخدام Secrets)<input name="wabaId" defaultValue={settings?.wabaId||""}/></label><label>معرّف رقم الهاتف (يمكن ضبطه في Secrets)<input name="phoneNumberId" defaultValue={settings?.phoneNumberId||""}/></label><label className="checkbox-label"><input type="checkbox" name="enabled" defaultChecked={settings?.enabled}/> تفعيل التذكيرات التلقائية</label></div><p className="muted">تعمل التذكيرات قبل الانتهاء بيومين ويوم الانتهاء، وللاشتراك المنتهي غير المجدد. تعمل المهمة كل دقيقة أثناء تشغيل API دون حاجة لتسجيل دخول المدير؛ Autoscale قد يتوقف عند الخمول. الإرسال معطل افتراضيًا ولا تُطلب بيانات Meta لبناء التطبيق.</p><button className="button primary" disabled={busy}>حفظ الإعدادات</button></form>
+    <div className="panel table-panel"><div className="table-toolbar"><div><h2>قوالب الرسائل العربية</h2><small>تُرسل القوالب إلى Meta للمراجعة؛ يلزم اعتمادها قبل الإرسال</small></div><button className="button ghost" onClick={syncTemplates} disabled={busy||!settings?.wabaId}>تحديث الحالات</button></div>{templateInfo.map(([key,title])=>{const t=settings?.templates.find(x=>x.name===key);return <TemplateForm key={key} templateKey={key} title={title} body={t?.body||""} status={t?.status||"draft"} busy={busy} onSubmit={body=>createTemplate(key,body)}/>})}</div></>}
+    {error&&<div className="error-panel">{error}</div>}</>;
+}
+
+function TemplateForm({templateKey,title,body,status,busy,onSubmit}:{templateKey:string;title:string;body:string;status:string;busy:boolean;onSubmit:(body:string)=>void}) {
+  const [value,setValue]=useState(body);
+  useEffect(()=>setValue(body),[body]);
+  const statusLabel:Record<string,string>={approved:"معتمد",pending:"بانتظار مراجعة Meta",draft:"مسودة",rejected:"مرفوض",paused:"موقوف مؤقتًا",disabled:"معطّل"};
+  return <form className="whatsapp-template-row" onSubmit={e=>{e.preventDefault();onSubmit(value);}}><label>{title}<textarea required minLength={10} maxLength={1024} value={value} onChange={e=>setValue(e.target.value)} placeholder="مرحبًا {{1}}، ... {{2}} ... {{3}}"/></label><div className="template-meta"><span className={`status-pill ${status==="approved"?"success":"warn"}`}>{statusLabel[status]||"حالة غير معروفة"}</span><button className="mini-button" disabled={busy||status==="approved"||status==="pending"}>إرسال القالب لمراجعة Meta</button></div></form>;
 }
 
 function MemberDetail() {
-  const {can}=useAccess();
   const {id:rawId}=useParams();const id=Number(rawId);const detailQuery=useGetMember(id,{query:{enabled:Number.isInteger(id)&&id>0,queryKey:getGetMemberQueryKey(id)}});
-  const info=detailQuery.data;const [waLogs,setWaLogs]=useState<any[]>([]);const [waMessage,setWaMessage]=useState("");
+  const info=detailQuery.data;const [waLogs,setWaLogs]=useState<any[]>([]);const [waMessage,setWaMessage]=useState("");const [waBusy,setWaBusy]=useState(false);
   const loadWaLogs=()=>clubApi<any[]>(`/members/${id}/whatsapp-reminders`).then(setWaLogs).catch(()=>setWaLogs([]));
   useEffect(()=>{if(Number.isInteger(id)&&id>0)void loadWaLogs();},[id]);
+  async function sendManualReminder(){setWaBusy(true);setWaMessage("");try{const result=await clubApi<{message:string}>(`/members/${id}/whatsapp-reminder`,{method:"POST"});setWaMessage(result.message);await loadWaLogs();}catch(e){setWaMessage(e instanceof Error?e.message:"تعذر إرسال التذكير");}finally{setWaBusy(false);}}
   if(detailQuery.isLoading)return <div className="loading-panel">جارٍ تحميل الملف…</div>;
   if(!info)return <div className="panel"><Empty text="تعذر العثور على ملف المشترك."/></div>;
-  const chatUrl=buildWhatsAppChatUrl(info.member.phone,buildWhatsAppReminderMessage(info.member.name));
-  return <><PageHeading eyebrow="ملف المشترك" title={info.member.name}><div className="quick-actions">{can("whatsapp.create")&&(chatUrl?<a className="button primary" href={chatUrl} target="_blank" rel="noopener noreferrer" onClick={()=>setWaMessage("فُتحت محادثة برسالة جاهزة. اضغط إرسال داخل واتساب لإرسالها.")}>فتح واتساب العادي</a>:<button className="button primary" disabled>رقم الهاتف غير صالح لواتساب</button>)}<Link href="/members" className="button ghost">العودة للمشتركين</Link></div></PageHeading>{waMessage&&<div className="notice-panel" role="status">{waMessage}</div>}<div className="panel member-summary"><div className="avatar large">{info.member.name.slice(0,1)}</div><div><h2>{info.member.name}</h2><p dir="ltr">{info.member.phone}</p><small>تاريخ التسجيل: {info.member.joinedAt.slice(0,10)}</small>{info.member.birthDate&&<small> · تاريخ الميلاد: {info.member.birthDate}</small>}{info.member.notes&&<p>{info.member.notes}</p>}</div></div><MemberProfileTools member={info.member}/><SubscriptionManager memberId={info.member.id}/><div className="panel table-panel history-panel"><div className="table-toolbar"><div><h2>سجل الدفعات</h2><small>الإيصالات قابلة للطباعة</small></div></div>{info.payments.length?<div className="table-scroll"><table><thead><tr><th>رقم الإيصال</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>طريقة الدفع</th><th>الإيصال</th></tr></thead><tbody>{info.payments.map(p=><tr key={p.id}><td>{p.receiptNumber}</td><td>{p.createdAt.slice(0,10)}</td><td>{p.kind==="payment"?"دفعة":p.kind==="discount"?"خصم":"استرداد"}</td><td><Money fils={p.amountFils}/></td><td>{p.method}</td><td>{p.kind==="payment"&&<Link href={`/receipt/${p.id}`} className="text-link">عرض وطباعة</Link>}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد دفعات مسجلة لهذا المشترك."/>}</div><div className="panel table-panel"><h2>سجل تذكيرات واتساب</h2>{waLogs.length?<div className="table-scroll"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>{waLogs.map(log=><tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("ar-JO",{timeZone:"Asia/Amman"})}</td><td>{log.triggerDays==="2"?"قبل الانتهاء بيومين":log.triggerDays==="0"?"يوم الانتهاء":"يدوي"}</td><td>{log.status==="accepted"?"قبلتها Meta سابقًا":log.status==="failed"?"فشل سابقًا":log.status}</td><td>{log.error||"سجل سابق؛ لا يؤكد وصول الرسالة."}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد تذكيرات مسجلة."/ >}</div></>;
+  return <><PageHeading eyebrow="ملف المشترك" title={info.member.name}><div className="quick-actions"><button className="button primary" onClick={sendManualReminder} disabled={waBusy}>إرسال تذكير واتساب</button><Link href="/members" className="button ghost">العودة للمشتركين</Link></div></PageHeading>{waMessage&&<div className="notice-panel">{waMessage}</div>}<div className="panel member-summary"><div className="avatar large">{info.member.name.slice(0,1)}</div><div><h2>{info.member.name}</h2><p dir="ltr">{info.member.phone}</p><small>تاريخ التسجيل: {info.member.joinedAt.slice(0,10)}</small>{info.member.birthDate&&<small> · تاريخ الميلاد: {info.member.birthDate}</small>}{info.member.notes&&<p>{info.member.notes}</p>}</div></div><MemberProfileTools member={info.member}/><SubscriptionManager memberId={info.member.id}/><div className="panel table-panel history-panel"><div className="table-toolbar"><div><h2>سجل الدفعات</h2><small>الإيصالات قابلة للطباعة</small></div></div>{info.payments.length?<div className="table-scroll"><table><thead><tr><th>رقم الإيصال</th><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>طريقة الدفع</th><th>الإيصال</th></tr></thead><tbody>{info.payments.map(p=><tr key={p.id}><td>{p.receiptNumber}</td><td>{p.createdAt.slice(0,10)}</td><td>{p.kind==="payment"?"دفعة":p.kind==="discount"?"خصم":"استرداد"}</td><td><Money fils={p.amountFils}/></td><td>{p.method}</td><td>{p.kind==="payment"&&<Link href={`/receipt/${p.id}`} className="text-link">عرض وطباعة</Link>}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد دفعات مسجلة لهذا المشترك."/>}</div><div className="panel table-panel"><h2>سجل تذكيرات واتساب</h2>{waLogs.length?<div className="table-scroll"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>{waLogs.map(log=><tr key={log.id}><td>{new Date(log.createdAt).toLocaleString("ar-JO",{timeZone:"Asia/Amman"})}</td><td>{log.triggerDays==="2"?"قبل الانتهاء بيومين":log.triggerDays==="0"?"يوم الانتهاء":"يدوي"}</td><td>{log.status==="accepted"?"قبلتها Meta":log.status==="failed"?"فشل":log.status}</td><td>{log.error||"القبول لا يؤكد التسليم"}</td></tr>)}</tbody></table></div>:<Empty text="لا توجد تذكيرات مسجلة."/ >}</div></>;
 }
 
 function ReceiptPage() {
@@ -361,7 +345,7 @@ function MainRouter() {
   return <Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={AuthPages}/><Route path="/sign-up/*?" component={AuthPages}/>
     <Route path="/admin"><Protected ownerOnly><AdminPage/></Protected></Route>
     <Route path="/account"><Protected><UserProfile routing="hash"/></Protected></Route>
-    <Route path="/dashboard"><DashboardErrorBoundary><Protected permissions={["dashboard.view"]}><RoleDashboard/></Protected></DashboardErrorBoundary></Route>
+    <Route path="/dashboard"><Protected permissions={["dashboard.view"]}><RoleDashboard/></Protected></Route>
     <Route path="/members"><Protected permissions={["members.view"]}><Members/></Protected></Route>
     <Route path="/members/:id"><Protected permissions={["members.view"]}><RoleMemberDetail/></Protected></Route>
     <Route path="/plans"><Protected permissions={["plans.view"]}><PlansPage/></Protected></Route>

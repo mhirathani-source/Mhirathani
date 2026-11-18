@@ -30,10 +30,13 @@ test("owner role CRUD and encrypted backup HTTP handlers use real PostgreSQL", {
   }
   try{
     assert.equal((await call("/whatsapp-reminders","GET",undefined,true)).status,403);
-    const reminders=await(await call("/whatsapp-reminders")).json() as {enabled:boolean;configured:boolean;mode:string};
-    assert.deepEqual(reminders,{enabled:false,configured:false,mode:"manual"});
-    assert.equal((await call("/whatsapp-reminders","PUT",{enabled:true})).status,409);
-    assert.deepEqual(await(await call("/whatsapp-reminders")).json(),{enabled:false,configured:false,mode:"manual"});
+    const reminders=await(await call("/whatsapp-reminders")).json() as {enabled:boolean;configured:boolean};
+    assert.equal(typeof reminders.enabled,"boolean");
+    if(!reminders.configured){
+      assert.equal(reminders.enabled,false);
+      assert.equal((await call("/whatsapp-reminders","PUT",{enabled:true})).status,400);
+      assert.equal((await(await call("/whatsapp-reminders")).json() as {enabled:boolean}).enabled,false);
+    }
     assert.equal((await call("/roles","GET",undefined,true)).status,403);
     assert.equal((await call("/roles","POST",{name,label:"اختبار دور مؤقت",permissions:["members.view"]})).status,201);
     const listing=await(await call("/roles")).json() as {roles:{name:string;permissions:string[]}[]};

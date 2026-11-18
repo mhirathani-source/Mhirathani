@@ -1257,60 +1257,7 @@ body { min-width:320px; background:hsl(var(--background)); color:hsl(var(--foreg
 }
 @media(max-width:390px) {
   .mobile-nav { padding-inline:5px;gap:2px; }
-  .mobile-nav small { font-size:9px; }
+  .mobile-nav small { font-size:8px; }
   .page-content { padding-inline:10px; }
   .page-heading .button { min-height:40px; }
-}
-
-/* Keep important data readable in the dark theme on small screens. */
-.dark .mobile-brand { color:hsl(var(--primary)); }
-.dark .member-name strong { color:hsl(var(--foreground));font-weight:700; }
-.dark .finance-metric strong,
-.dark .cash-balance,
-.dark .finance-list-row strong { color:hsl(var(--foreground))!important; }
-.dark .finance-list-row small { color:hsl(var(--muted-foreground))!important; }
-@media(max-width:720px) {
-  .member-name strong { font-size:13px;line-height:1.45; }
-  .finance-metric span { font-size:11px;line-height:1.45; }
-  .finance-metric strong { font-size:16px; }
-  .finance-row-sub { font-size:10px;line-height:1.5; }
-}
-
-/* Mobile interaction and legibility refinements for iOS and Android. */
-@media(max-width:720px) {
-  .topbar { min-width:0; }
-  .mobile-brand { max-width:min(52vw, 250px); overflow:hidden; font-size:15px; text-overflow:ellipsis; white-space:nowrap; }
-  .mobile-nav>a,.mobile-nav>button { min-height:48px; }
-  .mobile-nav small { font-size:9px; line-height:1.25; }
-  .mobile-more-menu>a { min-height:48px; font-size:12px; }
-
-  .button,.theme-toggle,.mini-button { min-height:44px; }
-  .mini-button { padding:8px 10px; }
-  .searchbox { min-height:44px; }
-  .searchbox input { min-width:0; font-size:16px; }
-  .table-scroll { scrollbar-width:thin; scrollbar-color:hsl(var(--ring) / .55) hsl(var(--muted)); }
-  .table-scroll table { font-size:12px; }
-  .table-scroll th,.table-scroll td { padding-inline:12px; }
-
-  .finance-tabs { gap:6px; padding-bottom:12px; }
-  .finance-tabs button { min-height:44px; padding:10px 13px; font-size:12px; }
-  .finance-metric span { font-size:12px; }
-  .finance-metric strong { font-size:16px; font-variant-numeric:tabular-nums; }
-  .finance-actions { width:100%; }
-  .finance-actions .button,.finance-actions .finance-refresh { min-height:44px; }
-  .finance-form-grid label,.report-controls label { font-size:12px; line-height:1.5; }
-  .finance-form input,.finance-form select,.finance-toolbar input,.finance-toolbar select,
-  .report-controls input,.report-controls select,
-  .mship-dialog input,.mship-dialog select,.mship-dialog textarea,
-  .mship-form input,.mship-form textarea { min-height:44px; font-size:16px; }
-  .finance-form textarea,.mship-dialog textarea,.mship-form textarea { min-height:88px; }
-  .mship-dialog { max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
-}
-
-@media(max-width:390px) {
-  .finance-form-grid { grid-template-columns:minmax(0,1fr); }
-  .finance-form-footer { flex-wrap:wrap; }
-  .finance-form-footer .button { flex:1 1 130px; }
-  .finance-card-body { padding:12px; }
-  .page-content { padding-inline:10px; }
 }

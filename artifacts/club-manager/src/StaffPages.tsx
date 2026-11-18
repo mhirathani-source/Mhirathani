@@ -31,7 +31,7 @@ export function StaffMemberDetail() {
       <p>{member.active ? "حساب مفعّل" : "حساب مؤرشف"}</p>
     </div></div>
     <MemberProfileTools member={member}/>
-    <MemberReminderTools memberId={member.id} memberName={member.name} phone={member.phone}/>
+    <MemberReminderTools memberId={member.id}/>
     <p className="notice-panel">تفاصيل المدفوعات والإيصالات لا تظهر دون الصلاحية المالية المناسبة.</p>
   </>;
 }
