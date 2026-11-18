@@ -29,14 +29,6 @@ test("owner role CRUD and encrypted backup HTTP handlers use real PostgreSQL", {
     return fetch(`http://127.0.0.1:${port}/club/admin${path}`,{method,headers:{"Content-Type":"application/json",...(staff?{"x-test-staff":"1"}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
   }
   try{
-    assert.equal((await call("/whatsapp-reminders","GET",undefined,true)).status,403);
-    const reminders=await(await call("/whatsapp-reminders")).json() as {enabled:boolean;configured:boolean};
-    assert.equal(typeof reminders.enabled,"boolean");
-    if(!reminders.configured){
-      assert.equal(reminders.enabled,false);
-      assert.equal((await call("/whatsapp-reminders","PUT",{enabled:true})).status,400);
-      assert.equal((await(await call("/whatsapp-reminders")).json() as {enabled:boolean}).enabled,false);
-    }
     assert.equal((await call("/roles","GET",undefined,true)).status,403);
     assert.equal((await call("/roles","POST",{name,label:"اختبار دور مؤقت",permissions:["members.view"]})).status,201);
     const listing=await(await call("/roles")).json() as {roles:{name:string;permissions:string[]}[]};

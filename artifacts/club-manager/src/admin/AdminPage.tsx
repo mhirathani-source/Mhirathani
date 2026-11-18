@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import "./admin.css";
-import WhatsAppToggle from "./WhatsAppToggle";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${base}/api/club/admin`;
@@ -47,12 +46,11 @@ function General() {
   const links: [string, string, string][] = [
     ["/members", "المشتركون", "الملفات والبيانات"], ["/subscriptions", "الاشتراكات", "التجديد والإنهاء"], ["/subscriptions", "الديون والدفعات", "الأرصدة المستحقة وتسجيل الدفع"],
     ["/plans", "الباقات", "الأسعار والمدد"], ["/finance", "المحاسبة", "الصندوق والتصنيفات"], ["/finance", "الإيرادات والمصاريف", "الحركات المالية"],
-    ["/finance", "الرواتب", "الموظفون والاستحقاقات"], ["/reports", "التقارير", "ملخصات الفترة"], ["/settings/whatsapp", "واتساب", "القوالب والربط"]];
+    ["/finance", "الرواتب", "الموظفون والاستحقاقات"], ["/reports", "التقارير", "ملخصات الفترة"], ["/settings/whatsapp", "واتساب", "نص التذكير اليدوي"]];
   const ov = useQuery({ queryKey: ["admin", "overview"], queryFn: () => req<{ pendingCount: number; userCount: number }>("/overview"), refetchInterval: 10000 });
   const st = useQuery({ queryKey: ["admin", "settings"], queryFn: () => req<Settings>("/settings") });
   const qc = useQueryClient();
   const [f, setF] = useState<Settings | null>(null);
-  const [days, setDays] = useState("");
   const save = useMutation({ mutationFn: (s: Settings) => req<Settings>("/settings", send("PUT", s)), onSuccess: s => { qc.setQueryData(["admin", "settings"], s); void qc.invalidateQueries({queryKey:["clubSettings"]}); setF(null); } });
   return <>
     <Load q={ov}>{o => <div className="stats-grid"><div className="stat-card"><span className="stat-title">طلبات بانتظار الموافقة</span><strong>{o.pendingCount}</strong></div><div className="stat-card"><span className="stat-title">المستخدمون</span><strong>{o.userCount}</strong></div></div>}</Load>
@@ -72,14 +70,11 @@ function General() {
           {["email", "birthDate"].map(k => <label className="adm-chk" key={k}><input type="checkbox" checked={req2(k)} onChange={e => set({ memberRequiredFields: e.target.checked ? [...s.memberRequiredFields, k] : s.memberRequiredFields.filter(x => x !== k) })} />{k === "email" ? "البريد الإلكتروني" : "تاريخ الميلاد"}</label>)}
           <p><strong>طرق الدفع المفعّلة</strong></p>
           {Object.keys(methodAr).map(k => <label className="adm-chk" key={k}><input type="checkbox" checked={s.paymentMethods.includes(k)} onChange={e => set({ paymentMethods: e.target.checked ? [...s.paymentMethods, k] : s.paymentMethods.filter(x => x !== k) })} />{methodAr[k]}</label>)}
-          <p><strong>أيام التذكير قبل الانتهاء</strong> <small>(0 إلى 30، مفصولة بفاصلة)</small></p>
-          <input value={days || s.reminderDays.join(",")} onChange={e => { setDays(e.target.value); set({ reminderDays: e.target.value.split(",").map(x => x.trim()).filter(Boolean).map(Number) }); }} />
-          <p className="adm-warn">إضافة أيام تذكير جديدة تتطلب قالب رسالة عام معتمدًا من Meta قبل أن يعمل الإرسال، ولا تعني حفظ القيمة أن الخدمة جاهزة.</p>
           <Msg err={save.error} ok={save.isSuccess && !f ? "تم حفظ الإعدادات." : undefined} />
           <button className="button primary" disabled={save.isPending || !s.paymentMethods.length}>{save.isPending ? "جارٍ الحفظ…" : "حفظ الإعدادات"}</button>
         </form>; }}</Load>
     </div>
-    <WhatsAppToggle/>
+    <div className="panel"><h2>رسائل واتساب</h2><p>تفتح الأزرار محادثة برسالة جاهزة؛ الموظف يراجع النص ويضغط إرسال بنفسه داخل WhatsApp. لا توجد رسائل مجدولة أو إرسال تلقائي.</p></div>
     <div className="panel"><h2>الأقسام الإدارية</h2><div className="adm-grid" style={{ marginTop: 14 }}>{links.map(([h, t, d]) => <Link key={t} href={h} className="adm-link">{t}<small>{d}</small></Link>)}</div></div>
   </>;
 }

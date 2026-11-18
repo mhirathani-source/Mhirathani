@@ -6,7 +6,7 @@ export const sections = {
   dashboard: "لوحة التحكم", members: "المشتركون", subscriptions: "الاشتراكات",
   plans: "الباقات والأسعار", payments: "الديون والمدفوعات", finance: "الإيرادات والمصاريف والصندوق",
   employees: "بيانات الموظفين والرواتب الأساسية", payroll: "الرواتب والاستحقاقات", reports: "التقارير المالية",
-  whatsapp: "واتساب والتنبيهات", settings: "إعدادات النظام", users: "المستخدمون",
+  whatsapp: "رسائل واتساب اليدوية", settings: "إعدادات النظام", users: "المستخدمون",
   roles: "الأدوار والصلاحيات", backups: "النسخ الاحتياطي", audit: "سجل العمليات", security: "الأمان",
 } as const;
 export const actions = { view: "عرض", create: "إضافة", edit: "تعديل", delete: "حذف / إلغاء", export: "تصدير", approve: "اعتماد" } as const;

@@ -1,4 +1,4 @@
-- [مواعيد التذكيرات](reminder-requirements.md) — يومان ويوم الانتهاء وللمنتهي غير المجدد؛ جهّز الكود دون انتظار Meta وأبقِ التفعيل OFF.
+- [سياسة تذكيرات واتساب](reminder-requirements.md) — رابط محادثة يدوي فقط؛ لا إرسال تلقائي أو Meta، وسجلات الطلب لا تثبت التسليم.
 - [تاريخ المشترك المالي](member-history-policy.md) — سياسة المستخدم: الحفاظ على المدفوعات والديون والسجلات المرتبطة، وتقديم الأرشفة بدل الحذف غير الآمن.
 - [Financial access policy](financial-access-policy.md) — Owner has full access; other accounts need explicit section/action grants, enforced on the server.
 - [V2 demo boundary](v2-demo-boundary.md) — User chose an independent local-state demo; preserve the real system and keep demo roles and data isolated.

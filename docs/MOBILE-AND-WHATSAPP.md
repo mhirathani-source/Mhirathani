@@ -1,4 +1,4 @@
-# Mobile installation and disabled WhatsApp reminders
+# Mobile installation and manual WhatsApp reminders
 
 ## Verified production URLs
 
@@ -29,29 +29,18 @@ Only public assets and the safe offline page are cached. Login, API, membership,
 - The previously generated debug APK predates this change and must not be presented as this updated native version.
 - Before distribution, test login, renewal/payment forms, logout, external sign-in providers and network recovery on real Android/iOS devices. Browser-based PWA checks do not prove native OAuth compatibility.
 
-## WhatsApp: OFF by default
+## WhatsApp: manual only
 
-Server-only adapter: `api/whatsapp/reminders.js`, used by the existing database-backed sender/scheduler. It is not a publicly accessible unauthenticated sending endpoint.
+The club no longer sends messages through WhatsApp Business Platform, Meta credentials, or a scheduled sender. The WhatsApp settings page stores an Arabic message template; the member-profile action prepares a `wa.me` chat link with the member's international phone number and message text.
 
-The owner has a switch in **لوحة التحكم والإعدادات → الإعدادات العامة → تذكيرات واتساب**. The persisted default is OFF. Missing credentials are a normal disabled state and do not prevent compilation or startup.
+The employee reviews and sends the message manually inside WhatsApp. The system records a request to open the chat, not proof that WhatsApp opened, that the employee pressed Send, or that the message was delivered. Previous reminder rows are retained and displayed as legacy records. No WhatsApp schema or member data is removed.
 
-Later add these through Replit Secrets, including the production environment:
-
-- `META_WHATSAPP_TOKEN`
-- `META_PHONE_NUMBER_ID`
-
-Never paste the token into chat, a frontend environment variable or the settings UI. Re-publish after changing production configuration if required by Publishing, and turn the owner switch ON only after preparing Meta-approved Arabic templates.
-
-The expired-membership template is `prime_subscription_expired` (`ar`) with three body parameters: member name, plan name and subscription end date. Other existing templates support two days before expiry, the expiry day and manual reminders. With direct Meta credentials, Meta enforces template approval; the UI's draft status is not a claim of approval. A WABA ID remains useful for submitting and synchronizing template statuses through the existing settings page.
-
-The scheduler skips renewed, paused, cancelled and archived members as applicable. It selects only the latest eligible expired contract per member, uses database deduplication, and logs accepted/failed requests. Accepted does not mean delivered. Failed/uncertain requests are not automatically retried in a way that might send duplicates; delivery webhooks and managed retry policy remain part of the existing official WhatsApp rollout.
-
-The scheduler runs while the API process is running and does not require a signed-in manager. Autoscale can sleep, so guaranteed timed delivery still needs an always-running service or an authenticated external scheduler. No live messages were sent during this implementation.
+On mobile, the operating system opens the WhatsApp app associated with `wa.me`; if both standard WhatsApp and WhatsApp Business are installed, the operating system may use the user's default app or show an app chooser.
 
 ## Verification
 
 - Both frontend and backend TypeScript checks and production builds.
-- `node --test api/whatsapp/reminders.test.cjs`: OFF/no-credentials performs zero requests, mocked official template payload, explicit errors and expired-contract selection.
+- `node --test api/whatsapp/manual.test.cjs`: Jordanian phone normalization, invalid-number rejection, Arabic template expansion and URL encoding.
 - `node artifacts/club-manager/tools/check-mobile.mjs`: manifest, icon sizes, install-event capture, sensitive-route worker bypass and native host configuration.
-- Admin HTTP integration checks reject staff access and reject enabling an unconfigured sender.
+- Server role permissions continue to gate editing the message template and opening a member chat.
 - Capacitor sync for Android/iOS. This does not replace real-device release acceptance.
