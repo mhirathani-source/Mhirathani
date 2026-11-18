@@ -1,13 +1,13 @@
 # Mobile installation and disabled WhatsApp reminders
 
-## Requested public URLs
+## Verified production URLs
 
-- Website: `https://prime-boxing-academy.replit.app/`
-- Installation page: `https://prime-boxing-academy.replit.app/download`
+- Website: `https://prime1academy.replit.app/`
+- Installation page: `https://prime1academy.replit.app/download`
 
-These are the requested target URLs, not a claim that Publishing has attached the domain. Before rollout, verify the domain in Publishing and choose Public visibility. Keep Clerk login, approval and server permissions enabled. Do not overwrite production data with development fixtures.
+These URLs were read from the active Replit deployment metadata. Keep Clerk login, approval and server permissions enabled. Do not overwrite production data with development fixtures.
 
-The publishing metadata checked during this work still returned the old `Prime1academy.replit.app` domain with password protection. The requested domain returned HTTP 404. The owner must complete the domain/visibility settings and Publish; the agent does not publish automatically.
+The active deployment is password-protected at the Replit level. To make the install page publicly reachable, set deployment visibility to Public in Publishing and publish again; this does not remove the app's Clerk sign-in or backend permissions. The requested `prime-boxing-academy.replit.app` domain is not attached and returned HTTP 404 when checked.
 
 ## PWA
 

@@ -35,14 +35,14 @@ exported.clearInstallPrompt();assert.equal(exported.getInstallPrompt(),null);
 const handlers=new Map();
 const worker=await read("public/service-worker.js");
 vm.runInNewContext(worker,{URL,Set,Response,
-  self:{location:{href:"https://prime-boxing-academy.replit.app/service-worker.js"},navigator:{onLine:true},addEventListener:(name,fn)=>handlers.set(name,fn)},
+  self:{location:{href:"https://prime1academy.replit.app/service-worker.js"},navigator:{onLine:true},addEventListener:(name,fn)=>handlers.set(name,fn)},
 });
 for(const path of ["api/club/finance/report","api/club/session","__clerk/v1/client","prime-v2/"]){
   let intercepted=false;
-  handlers.get("fetch")({request:{url:`https://prime-boxing-academy.replit.app/${path}`,method:"GET",mode:"navigate",headers:new Headers()},respondWith(){intercepted=true;}});
+  handlers.get("fetch")({request:{url:`https://prime1academy.replit.app/${path}`,method:"GET",mode:"navigate",headers:new Headers()},respondWith(){intercepted=true;}});
   assert.equal(intercepted,false,`must not intercept ${path}`);
 }
 assert.match(await read("capacitor.config.ts"),/appId:\s*'com\.primeboxingacademy\.app'/);
-assert.match(await read("capacitor.config.ts"),/url:\s*'https:\/\/prime-boxing-academy\.replit\.app\/'/);
+assert.match(await read("capacitor.config.ts"),/url:\s*'https:\/\/prime1academy\.replit\.app\/'/);
 assert.doesNotMatch(await read("src/main.tsx"),/NativePortal/);
 console.log("Mobile checks passed: manifest, PNG dimensions, runtime HTTPS links, early install prompt, private-route isolation, hosted native configuration.");
