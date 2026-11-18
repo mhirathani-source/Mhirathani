@@ -37,6 +37,7 @@ export function routePermissions(method: string, rawPath: string): string[] | "o
   if (/^\/club\/admin(?:\/|$)/.test(path)) return "owner";
   if (path === "/club/overview" && read) return ["dashboard.view"];
   if (path === "/club/dashboard" && read) return ["dashboard.view", "payments.view", "members.view", "reports.view"];
+  if (path === "/club/client-errors" && method === "POST") return ["dashboard.view"];
   if (path === "/club/operations/settings" && read) return [];
   if (path === "/members") return [read ? "members.view" : method === "POST" ? "members.create" : "unsupported"];
   if (/^\/members\/\d+\/profile$/.test(path) && read) return ["members.view"];

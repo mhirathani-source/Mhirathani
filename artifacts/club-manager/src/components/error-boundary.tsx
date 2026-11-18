@@ -15,6 +15,8 @@ interface ErrorBoundaryProps {
   FallbackComponent?: ComponentType<ErrorFallbackProps>;
   /** Changing this clears a caught error. Pass the route to recover on navigation. */
   resetKey?: unknown;
+  /** Optional reporting hook for a protected, narrowly scoped error endpoint. */
+  onError?: (error: Error, info: ErrorInfo) => void | Promise<void>;
 }
 
 interface ErrorBoundaryState {
@@ -75,11 +77,22 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
+    const normalizedError = toError(error);
     console.error(
       'ErrorBoundary caught an error:',
-      toError(error),
+      normalizedError,
       info.componentStack,
     );
+    try {
+      const report = this.props.onError?.(normalizedError, info);
+      if (report && typeof report.then === 'function') {
+        void report.catch((reportError: unknown) => {
+          console.warn('ErrorBoundary diagnostic report failed:', reportError);
+        });
+      }
+    } catch (reportError) {
+      console.warn('ErrorBoundary diagnostic report failed:', reportError);
+    }
   }
 
   componentDidUpdate(prevProps: ErrorBoundaryProps): void {

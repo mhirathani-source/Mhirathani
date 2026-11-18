@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, UserProfile, useAuth, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { arSA } from "@clerk/localizations";
@@ -23,6 +23,7 @@ import { OperationalSubscriptions } from "./OperationalSubscriptions";
 import { PlansPage } from "./PlansPage";
 import { MemberFinancePage } from "./MemberFinancePage";
 import { ThemeToggle } from "./components/theme-toggle";
+import { ErrorBoundary } from "./components/error-boundary";
 import { buildWhatsAppChatUrl, buildWhatsAppReminderMessage } from "./whatsappLink";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -233,8 +234,41 @@ function Protected({ children, ownerOnly = false, permissions = [], anyPermissio
 function RoleDashboard() {
   const hasFinanceDashboard = useAccess().can("payments.view", "reports.view", "members.view");
   return hasFinanceDashboard
-    ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardPage/></Suspense>
+    ? <Suspense fallback={<div className="loading-panel">جارٍ تحميل لوحة التحكم…</div>}><DashboardErrorBoundary><DashboardPage/></DashboardErrorBoundary></Suspense>
     : <StaffDashboard/>;
+}
+
+function DashboardErrorBoundary({ children }: { children: ReactNode }) {
+  const { getToken } = useAuth();
+  return (
+    <ErrorBoundary
+      onError={async (error, info) => {
+        const token = await getToken();
+        if (!token) return;
+        const response = await fetch(`${basePath}/api/club/client-errors`, {
+          method: "POST",
+          credentials: "same-origin",
+          keepalive: true,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: error.name,
+            message: error.message,
+            stack: error.stack ?? "",
+            componentStack: info.componentStack ?? "",
+            pathname: stripBase(window.location.pathname),
+          }),
+        });
+        if (!response.ok) {
+          console.warn("Dashboard diagnostic report rejected:", response.status);
+        }
+      }}
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 function RoleMemberDetail() { return useAccess().can("members.view", "subscriptions.view", "payments.view") ? <MemberFinancePage/> : <StaffMemberDetail/>; }
 function RoleSubscriptions() { return useAccess().can("payments.view", "plans.view", "members.view") ? <Subscriptions/> : <OperationalSubscriptions/>; }

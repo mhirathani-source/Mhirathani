@@ -53,8 +53,12 @@ import { effectivePermissions } from "../lib/permissions";
 import { readClubSettings } from "../lib/clubSettings";
 import { isIndependentCashMovement, signedPayment } from "../lib/cashLedger";
 import { buildClubDashboard } from "../lib/dashboardMetrics";
+import { dashboardClientErrorSchema, sanitizeDashboardDiagnostic } from "../lib/dashboardClientError";
+import { logger } from "../lib/logger";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
+const recentDashboardErrorReports = new Map<string, number>();
 const JORDAN_TIME_ZONE = "Asia/Amman";
 
 function jordanDate(date = new Date()): string {
@@ -157,6 +161,47 @@ router.get("/club/dashboard", requireClubUser, async (_req, res): Promise<void> 
     transactions,
     plans,
   })));
+});
+
+router.post("/club/client-errors", (req, res): void => {
+  if (!req.clubUser?.isOwner && !req.clubPermissions?.includes("dashboard.view")) {
+    res.status(403).json({ error: "تتطلب تقارير الأعطال صلاحية لوحة التحكم" });
+    return;
+  }
+
+  const input = dashboardClientErrorSchema.safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ error: "بيانات تقرير العطل غير صالحة" });
+    return;
+  }
+
+  const userKey = req.clubUser?.clerkUserId;
+  if (!userKey) {
+    res.status(401).json({ error: "يلزم تسجيل الدخول" });
+    return;
+  }
+
+  const now = Date.now();
+  for (const [key, timestamp] of recentDashboardErrorReports) {
+    if (now - timestamp > 60_000) recentDashboardErrorReports.delete(key);
+  }
+  const previousReport = recentDashboardErrorReports.get(userKey);
+  if (previousReport && now - previousReport < 15_000) {
+    res.status(202).json({ accepted: true });
+    return;
+  }
+  recentDashboardErrorReports.set(userKey, now);
+
+  logger.error({
+    diagnostic: "dashboard-client-render-error",
+    name: sanitizeDashboardDiagnostic(input.data.name, 100),
+    message: sanitizeDashboardDiagnostic(input.data.message, 500),
+    stack: sanitizeDashboardDiagnostic(input.data.stack, 8_000),
+    componentStack: sanitizeDashboardDiagnostic(input.data.componentStack, 8_000),
+    pathname: input.data.pathname,
+    role: req.clubUser?.role,
+  }, "Authenticated dashboard render exception");
+  res.status(202).json({ accepted: true });
 });
 
 router.get("/members", requireClubUser, async (req, res): Promise<void> => {
