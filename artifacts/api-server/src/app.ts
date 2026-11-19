@@ -1,4 +1,6 @@
 import express, { type Express } from "express";
+import path from "node:path";
+import { existsSync } from "node:fs";
 import { MembershipError } from "./lib/membership";
 import { ZodError } from "zod/v4";
 import pinoHttp from "pino-http";
@@ -46,17 +48,68 @@ app.use(express.json({ limit: "13mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+if (process.env.RENDER_STAGING === "true") {
+  const frontendDistPath = path.resolve(
+    process.cwd(),
+    "artifacts/club-manager/dist/public",
+  );
+  const frontendIndexPath = path.join(frontendDistPath, "index.html");
+  app.use(express.static(frontendDistPath, { index: false }));
+  app.get("/{*splat}", (req, res, next) => {
+    if (req.path === "/api" || req.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+
+    if (!existsSync(frontendIndexPath)) {
+      next();
+      return;
+    }
+
+    res.sendFile(frontendIndexPath, (error) => {
+      if (error) next(error);
+    });
+  });
+}
 app.use(((error, _req, res, _next) => {
   if (res.headersSent) return;
-  if (error instanceof MembershipError) { res.status(error.status).json({ error: error.message, ...(error.canArchive ? {canArchive:true}: {}) }); return; }
-  if (error instanceof ZodError) { res.status(400).json({ error: "صيغة الطلب أو المعرّفات غير صحيحة؛ تحقق من الحقول المطلوبة" }); return; }
+  if (error instanceof MembershipError) {
+    res.status(error.status).json({
+      error: error.message,
+      ...(error.canArchive ? { canArchive: true } : {}),
+    });
+    return;
+  }
+  if (error instanceof ZodError) {
+    res.status(400).json({
+      error: "صيغة الطلب أو المعرّفات غير صحيحة؛ تحقق من الحقول المطلوبة",
+    });
+    return;
+  }
   const code = (error as { code?: string; status?: number }).code;
-  if (code === "23505") { res.status(409).json({ error: "السجل موجود بالفعل؛ لم تُحفظ عملية مكررة" }); return; }
-  if (code === "23503") { res.status(409).json({ error: "السجل مرتبط ببيانات أخرى؛ استخدم الأرشفة أو الإلغاء بدل الحذف" }); return; }
-  if ((error as { status?: number }).status === 413) { res.status(413).json({ error: "حجم الملف أكبر من الحد المسموح" }); return; }
-  if ((error as { type?: string }).type === "entity.parse.failed") { res.status(400).json({ error: "صيغة الطلب غير صالحة" }); return; }
+  if (code === "23505") {
+    res.status(409).json({ error: "السجل موجود بالفعل؛ لم تُحفظ عملية مكررة" });
+    return;
+  }
+  if (code === "23503") {
+    res.status(409).json({
+      error: "السجل مرتبط ببيانات أخرى؛ استخدم الأرشفة أو الإلغاء بدل الحذف",
+    });
+    return;
+  }
+  if ((error as { status?: number }).status === 413) {
+    res.status(413).json({ error: "حجم الملف أكبر من الحد المسموح" });
+    return;
+  }
+  if ((error as { type?: string }).type === "entity.parse.failed") {
+    res.status(400).json({ error: "صيغة الطلب غير صالحة" });
+    return;
+  }
   logger.error({ code: code ?? "unhandled" }, "API operation failed");
-  res.status(500).json({ error: "تعذر تنفيذ العملية؛ لم يتم تأكيد نجاحها. أعد المحاولة أو راجع سجل المدير." });
+  res.status(500).json({
+    error:
+      "تعذر تنفيذ العملية؛ لم يتم تأكيد نجاحها. أعد المحاولة أو راجع سجل المدير.",
+  });
 }) as express.ErrorRequestHandler);
 
 export default app;
