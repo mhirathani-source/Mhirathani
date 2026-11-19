@@ -42,3 +42,17 @@ mtime_ms = 1792767777325
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/0b72e2f9-c21f-4d83-95e3-1cd2e6a935aa/f7099c06-8554-40c8-a852-8e89df869e9e"
 storage_version_token = "1792767937771242"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "VqFRM-t0Bc-TX3O7trOA1"
+uri = "file://generated-artifacts/prime-boxing-academy-render-file-list.html"
+type = "html"
+title = "قائمة ملفات نسخة Prime Boxing Academy"
+description = "القائمة الكاملة للـ369 ملفًا المتتبّع في النسخة النظيفة المقترحة لمستودع GitHub؛ لم يتم رفع أي ملف."
+logical_id = "301e407a-1d15-4f7e-9831-87665309daae"
+content_hash = "sha256:0442e7412c610cb929b9c3f8264ddf6cfb107b06c5ae4f007737e9d0b047ddc4"
+size = 28891
+mtime_ms = 1795082512377
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:12be20c5-bf0e-4a13-9c13-3f2c120493d1/301e407a-1d15-4f7e-9831-87665309daae/c95ad184-1c32-4ef6-a82a-e6c988703035"
+storage_version_token = "1795082521713946"
+content_type = "text/html"
